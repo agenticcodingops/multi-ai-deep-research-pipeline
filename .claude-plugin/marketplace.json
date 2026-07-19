@@ -1,0 +1,12 @@
+{
+  "name": "agenticcodingops",
+  "description": "AgenticCodingOps plugins: the six-phase multi-AI research pipeline and its methodology.",
+  "owner": { "name": "agenticcodingops" },
+  "plugins": [
+    {
+      "name": "multi-ai-research",
+      "source": "./plugins/multi-ai-research",
+      "description": "Six-phase multi-AI research pipeline: decomposition, parallel fan-out, contradiction matrix, citation verification, chairman synthesis, output routing."
+    }
+  ]
+}
