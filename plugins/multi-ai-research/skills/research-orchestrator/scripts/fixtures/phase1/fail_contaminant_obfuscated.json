@@ -112,7 +112,7 @@
       "sub_question_id": "SQ1",
       "agent": "Gemini",
       "lane_id": "gemini",
-      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify. Research focus: <RESEARCH_QUESTION>."
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ1",
@@ -124,7 +124,7 @@
       "sub_question_id": "SQ2",
       "agent": "Gemini",
       "lane_id": "gemini",
-      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify. Vendor line: Hugo**Max** whitepaper claims 10x faster builds."
     },
     {
       "sub_question_id": "SQ2",
@@ -142,7 +142,7 @@
       "sub_question_id": "SQ3",
       "agent": "DecorrelatedLane",
       "lane_id": "deepseek",
-      "ready_to_paste_prompt": "You are the DecorrelatedLane lane (decorrelated role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the DecorrelatedLane lane (decorrelated role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify. Vendor line: Hugo\u200bMax whitepaper claims 10x faster builds."
     },
     {
       "sub_question_id": "SQ4",
@@ -175,7 +175,9 @@
       "input_id": "IN2",
       "name": "Vendor marketing packet",
       "classification": "under_scrutiny",
-      "contaminants": []
+      "contaminants": [
+        "HugoMax whitepaper claims 10x faster builds"
+      ]
     }
   ],
   "input_audits": {
@@ -184,7 +186,7 @@
       "disposition": "usable"
     },
     "IN2": {
-      "summary": "Marketing packet with unverified speed claims; quarantined pending benchmarks.",
+      "summary": "The packet repeats the line 'HugoMax whitepaper claims 10x faster builds' with no benchmark data attached.",
       "disposition": "quarantined"
     }
   },

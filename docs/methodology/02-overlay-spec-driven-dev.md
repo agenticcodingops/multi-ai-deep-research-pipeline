@@ -235,4 +235,4 @@ Reject any draft of `05-dossier.md` that:
 4. Cites a GitHub repo without the commit SHA or a recent release tag (unstable references rot fast).
 5. Recommends an architectural choice without naming at least one rejected alternative.
 
-If any of these fail, run a targeted Phase 2.5 — re-prompt the offending sub-question through Perplexity Pro Deep Research with explicit primary-source domain filters, then re-run Phase 5.
+If any of these fail, run a **targeted Phase-2 rerun** — re-prompt the offending sub-question through Perplexity Pro Deep Research with explicit primary-source domain filters — then re-run Phases 3, 4, and 5 so the contradiction matrix and citation ledger reflect the new material. (Not "Phase 2.5": that slot is reserved for the Debate mode, `13-overlay-deliberation-modes.md`.)

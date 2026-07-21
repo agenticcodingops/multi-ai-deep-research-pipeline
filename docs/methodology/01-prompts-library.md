@@ -31,13 +31,20 @@ Output strict JSON with these keys (this is the canonical Phase 1 output spec, v
   answer must land on (a recommendation plus a confidence level, never a summary); falsifiable
   must be true. Reject any sub-question whose best possible answer is a summary.
 - lane_roles: array of {lane_id, agent, role, lineage, execution_surface}
-  where lane_id is the lowercase slug used in the dossier filenames (02a-prompts-<lane_id>.md),
+  where lane_id is the lowercase slug used in the dossier filenames (02a-prompts-<lane_id>.md)
+  and must match ^[a-z0-9][a-z0-9_-]{0,63}$ (never a Windows reserved device name),
   role ∈ [evidence, sentiment, synthesis, decorrelated],
   lineage ∈ [Anthropic, OpenAI, Google, xAI, decorrelated, mixed],
   and execution_surface is a named product (where the operator runs the prompt), or one of:
   browser-agent, orchestrator-local, manual
 - phase_2_prompts: array of {sub_question_id, agent, lane_id, ready_to_paste_prompt} — the
-  CANONICAL statement of who researches what; each prompt fully formed, zero placeholders
+  CANONICAL statement of who researches what; each prompt fully formed, zero placeholders,
+  and carrying the COMPLETE Phase 2 contract in its own text: the sentinel instruction
+  (the token ===BEGIN LANE OUTPUT=== named inline in a sentence, never on its own line),
+  all six output section names, the confidence-tag, live-URL, primary-source and
+  coverage-gaps rules, and the filled ground-truth block when claims exist. A prompt that
+  merely references the contract will fail the Phase 2 gate when the agent, following only
+  what it was pasted, omits the sentinel or the section structure.
 - agent_assignments: array of {sub_question_id, primary_agent, secondary_agent, source_type_required}
   where primary_agent ∈ [Perplexity, Gemini, Grok, Claude, ChatGPT, DecorrelatedLane, NotebookLM, Elicit, Consensus]
   and source_type_required ∈ [official_docs, peer_reviewed, news_recent, social_signal, primary_text, vendor_pricing, repo_docs]
@@ -53,9 +60,11 @@ Output strict JSON with these keys (this is the canonical Phase 1 output spec, v
 - ground_truth (when the operator recorded ground-truth claims): array of {claim_id ("GT1"…),
   statement, metric_definition, status ∈ [verified, asserted], source_url (https)} — carried
   verbatim from 00-context.md, tags as verified at Step 0.6
-- deferred_phase_prompts (optional): prompts for later passes (Debate, Red Team) may carry
-  placeholder tokens ONLY if each token is listed, exactly as it appears (delimiters included,
-  e.g. "<DRAFT_RECOMMENDATION>"), in that entry's declared_placeholders array
+- deferred_phase_prompts (optional): prompts for later passes. Only two phases may defer
+  (2.5 Debate, 4.5 Red Team), and the ONLY sanctioned placeholder token is
+  "<DRAFT_RECOMMENDATION>", permitted solely on the phase-4.5 Red Team entry (filled at
+  Step 4.5 before hand-off). Each entry's declared_placeholders must list exactly the tokens
+  its template carries (delimiters included) — and that set may contain nothing else.
 - disqualifying_sources: array of source patterns to reject
 - success_criteria: array of bullets — what a publishable answer must include
 - known_traps: array of likely failure modes for this specific topic

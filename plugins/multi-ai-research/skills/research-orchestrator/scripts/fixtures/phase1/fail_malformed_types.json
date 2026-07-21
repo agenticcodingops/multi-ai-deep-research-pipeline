@@ -28,8 +28,12 @@
   ],
   "agent_assignments": [
     {
-      "sub_question_id": "SQ1",
-      "primary_agent": "Perplexity",
+      "sub_question_id": [
+        "SQ1"
+      ],
+      "primary_agent": {
+        "name": "Perplexity"
+      },
       "secondary_agent": "Gemini",
       "source_type_required": "official_docs"
     },
@@ -112,7 +116,7 @@
       "sub_question_id": "SQ1",
       "agent": "Gemini",
       "lane_id": "gemini",
-      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify. Research focus: <RESEARCH_QUESTION>."
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ1",
@@ -178,19 +182,10 @@
       "contaminants": []
     }
   ],
-  "input_audits": {
-    "IN1": {
-      "summary": "Hand-written notes comparing three generators; no vendor language detected.",
-      "disposition": "usable"
-    },
-    "IN2": {
-      "summary": "Marketing packet with unverified speed claims; quarantined pending benchmarks.",
-      "disposition": "quarantined"
-    }
-  },
+  "input_audits": "not an object",
   "ground_truth": [
     {
-      "claim_id": "GT1",
+      "claim_id": 12345,
       "statement": "A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator.",
       "metric_definition": "Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop.",
       "status": "verified",
@@ -202,9 +197,7 @@
       "phase": 4.5,
       "purpose": "Adversarial review of the draft recommendation",
       "prompt_template": "Challenge the following draft verdict: <DRAFT_RECOMMENDATION>. List the three strongest objections, tag each [HIGH], [MEDIUM], or [LOW], and cite a LIVE, resolvable URL for every objection.",
-      "declared_placeholders": [
-        "<DRAFT_RECOMMENDATION>"
-      ]
+      "declared_placeholders": "<DRAFT_RECOMMENDATION>"
     }
   ],
   "disqualifying_sources": [

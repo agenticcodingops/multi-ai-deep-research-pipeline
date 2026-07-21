@@ -21,7 +21,7 @@ Use this skill whenever the user wants to start, resume, or manage a multi-AI re
 
 This skill is the **session-level coordinator** — it manages the dossier folder, walks the user through phases sequentially, calls the requirements-quality-check skill when appropriate, and bridges between the file-system environment (Cowork / Claude Code) and Claude.ai web for cognitive phases.
 
-This skill does NOT itself execute Phases 1, 3, or 5 (the cognitive phases) inline by default. It prepares inputs and hands off to a qualifying surface — a fresh Claude.ai web chat, or for Phase 5 any surface meeting the capability gate at Step 5 (a fresh subagent on the strongest model qualifies). It DOES execute Phases 0, 2 (preparation), 4 (verification), and 6 (routing) directly.
+This skill does NOT itself execute Phases 1, 3, or 5 (the cognitive phases) inline by default. It prepares inputs and hands off to a qualifying surface — a fresh Claude.ai web chat, or for Phase 5 any surface meeting the Phase 5 capability gate (a fresh subagent on the strongest model qualifies). It DOES execute Phases 0, 2 (preparation), 4 (verification), and 6 (routing) directly.
 
 ---
 
@@ -284,13 +284,13 @@ python ./scripts/validate_phase1.py <dossier-root>/<topic-slug>/01-decomposition
 
 **Manual fallback checklist (mirrors gates G1–G8):**
 
-1. JSON parses; all spec keys present; 4–8 sub-questions with `SQ<n>` ids; every cross-reference between blocks resolves.
+1. JSON parses; `schema_version` is exactly 2; all spec keys present with the right shapes; 4–8 sub-questions with unique `SQ<n>` ids; lane ids unique, lowercase slugs (`a-z0-9_-`, no Windows device names); every agent name is one of the nine canonical values (`DecorrelatedLane`, not a product name, for the decorrelated lane); `source_type_required` uses the enum; every cross-reference between blocks resolves.
 2. Every sub-question has a non-empty `verdict_forced` and `falsifiable: true`.
-3. Every (sub-question, agent) pair implied by `agent_assignments` (primary and non-null secondary) has exactly one prompt in `phase_2_prompts`, and no prompt lacks an assignment.
+3. Every (sub-question, agent) pair implied by `agent_assignments` (primary and non-null secondary) has exactly one prompt in `phase_2_prompts` — no duplicates on either side, never primary == secondary — and each prompt's `agent` matches the `lane_roles` agent for its `lane_id` (a swapped lane sends prompts to the wrong surface).
 4. Every lane used is declared in `lane_roles` with valid role/lineage/surface, and every sub-question has ≥2 lanes whose role is `evidence` or `decorrelated`.
-5. Read every `ready_to_paste_prompt` end-to-end: no `<TOKEN>`, `{TOKEN}`, `«TOKEN»`, `TODO`, `TBD`, `[INSERT`; deferred prompts carry exactly their declared placeholders, no more, no fewer.
-6. Every prompt contains the [HIGH]/[MEDIUM]/[LOW] rule, the live-URL rule, the primary-sources bar, the coverage-gaps section, and the ground-truth block when claims exist.
-7. Search each contaminant string: permitted only inside `input_audits`; found in any prompt → FAIL.
+5. Read every `ready_to_paste_prompt` end-to-end: no `<TOKEN>`, `{TOKEN}`, `«TOKEN»`, `TODO`, `TBD`, `[INSERT` (a project-rules allowlist may excuse the bare words TODO/TBD only — never a delimited token). Deferred prompts: only the Red-Team phase-4.5 entry may defer, its only permitted token is `<DRAFT_RECOMMENDATION>`, and declared placeholders must match the template exactly.
+6. Every prompt carries the FULL Phase 2 contract in its own text: the sentinel instruction (token named inline, never on a standalone line inside the prompt), all six output section names, the [HIGH]/[MEDIUM]/[LOW] rule, the live-URL rule, the primary-sources bar, the coverage-gaps section — and, when claims exist, the filled ground-truth block: each claim's id, statement, metric definition, https source URL, and the three tag semantics ([GROUND-TRUTH-VERIFIED]/[GROUND-TRUTH-ASSERTED]/[CONTRADICTS-GROUND-TRUTH]).
+7. Search each contaminant string — including disguised renderings (`Hugo**Max**`, zero-width splits): permitted only in the `inputs[].contaminants` declarations and inside `input_audits`; found in any prompt → FAIL.
 8. Every ground-truth claim has a statement, metric definition, status, and https source URL.
 
 **Then the decomposition-gaps review (cognitive — the script cannot do this):** compare the sub-questions against the user's stated circumstances in `00-context.md` — decision context, constraints, jurisdiction or employment specifics, inputs. List every material factor no sub-question covers as `decomposition_gaps`, and surface it: add sub-questions now, or record the user's explicit acceptance of each gap. (The class of miss this catches, from a live run: an employment decision whose sub-questions never asked about the contract-versus-permanent split that changed which options were reachable.)
@@ -301,7 +301,7 @@ Update `00-context.md` status: "Phase 1 complete (gate passed)."
 
 #### Step 2.1 — Surface the customised Phase 2 prompts
 
-Read `01-decomposition.md`. Extract the canonical `phase_2_prompts` array, group by `lane_id` (from `lane_roles`), and write one staged-prompt file per lane:
+Read `01-decomposition.md`. Extract the canonical `phase_2_prompts` array, group by `lane_id` (from `lane_roles`), and write one staged-prompt file per lane. A `lane_id` becomes a filename verbatim, so it must match `^[a-z0-9][a-z0-9_-]{0,63}$` and never be a Windows reserved device name — Step 1.5's gate enforces this; never compose a path from a lane_id that failed it:
 
 ```
 <dossier-root>/<topic-slug>/
@@ -385,7 +385,7 @@ Then run the gate script over the dossier folder:
 python ./scripts/gate_phase2.py <dossier-root>/<topic-slug>
 ```
 
-The script splits every lane file into echoed-prompt and answer — reporting which method it used (sentinel, prompt-tail, or whole-file) — and computes ALL metrics on the answer only, because an echoed prompt satisfies every substring check by itself. It checks: six-section structure with non-trivial content under each heading; per-finding confidence tags (escaped `\[HIGH\]` counts after normalisation); the citation census, where `[n]`, `[^n]`, and `【n†…】` are dead markers rather than citations and hidden-span reference blocks are concealment; the URL-to-findings ratio; and a claims-vs-delivery check — an output asserting sections the structural check cannot find fails on that alone.
+The script splits every lane file into echoed-prompt and answer — reporting which method it used (sentinel, prompt-tail, or whole-file) — and computes ALL metrics on the answer only, because an echoed prompt satisfies every substring check by itself. **The split fails closed:** when a staged prompt exists, a lane output must establish its boundary via the sentinel or the prompt's uniquely-matching final line; any echo evidence without a boundary, or no boundary at all, fails C1 — whole-file scoring happens only when no staged prompt is available, and is noted. It checks: six-section structure with non-trivial content under each full-line heading (a body line like `Sources = [...]` is not a heading); per-finding confidence tags (escaped `\[HIGH\]` counts after normalisation); the citation census — **https URLs only**, where `[n]`, `[^n]`, `[^name]`, compound `[1, 2]`/`[3-4]`, and `【n†…】` are dead markers and the lane fails when dead markers reach or exceed its https URL count; concealment in any hidden markup (nested or unclosed `<span>`/`<div>`, `hidden` attributes, `display:none`/`visibility:hidden` styles, screen-reader-only classes, HTML comments) inside the answer region — hidden content in the echoed-prompt region is exempt; and a claims-vs-delivery check — an output asserting sections the structural check cannot find fails on that alone. Files named `02b-debate-<lane_id>.md` are gated against the **Debate contract** instead of the six sections: position statement, evidence/reasoning with at least one `[REASONED]` tag, rebuttal, the flip-fact, KEY TENSION, COMMON GROUND, plus ≥2 distinct https URLs.
 
 - **Any lane FAILS:** that lane must be re-exported or re-run before Phase 3. **Do not proceed with any lane in a failed state.** Surface the per-lane matrix with the specific failure lines.
 - **All lanes pass:** additionally run the **live-URL spot-check** — the script verifies URL presence and shape, not that pages actually resolve. Spot-open 3 citations per lane via Firecrawl MCP or web fetch if available on this surface; otherwise ask the user to open them in a browser and report. Dead links fail the lane.
@@ -395,13 +395,15 @@ Record results in `00-context.md` as `phase2_gate: <lane>=PASS|FAIL … (script|
 
 **Manual fallback checklist (mirrors checks C1–C7):**
 
-1. Find the last standalone `===BEGIN LANE OUTPUT===` line (or, failing that, the last occurrence of the staged prompt's final line); everything before it is echo — judge ONLY what follows. If the prompt is echoed and no boundary can be found, FAIL and re-export.
-2. All six sections present after the boundary, each with real content (Findings ≥3 numbered items; Sources ≥3 URLs).
+1. Find the last standalone `===BEGIN LANE OUTPUT===` line, or the staged prompt's final line appearing exactly once; everything before it is echo — judge ONLY what follows. **Fail closed:** if a staged prompt exists and neither boundary can be established — including when the prompt is only partially echoed — FAIL and re-export. Judge the whole file only when no staged prompt exists, and say so.
+2. All six sections present after the boundary as real full-line headings, each with real content (Findings ≥3 numbered items; Sources ≥3 https URLs). A prose line that merely starts with a section word is not a heading.
 3. Every numbered finding tagged [HIGH]/[MEDIUM]/[LOW] — escaped `\[HIGH\]` counts.
-4. Count live `https://` URLs in the answer: ≥3 distinct, at least one per two findings, and more URLs than bare `[n]`/`[^n]`/`【n†…】` markers.
-5. Inspect the raw text for hidden `<span style="display:none">` blocks holding references — concealment is a FAIL.
+4. Count distinct `https://` URLs in the answer (http does not count): ≥3, at least one per two findings, and strictly more https URLs than dead markers — `[n]`, `[^n]`, `[^name]`, compound `[1, 2]`/`[3-4]`, `【n†…】` (confidence and ground-truth tags are not markers). Equal counts FAIL.
+5. Inspect the raw text of the ANSWER region for concealment: hidden `<span>`/`<div>` (inline `display:none`/`visibility:hidden`, `hidden` attributes, screen-reader-only classes), nested or unclosed hidden containers (unclosed = automatic FAIL), and HTML comments carrying references or substantial content. Hidden content in the echoed-prompt region is exempt.
 6. If the output *claims* a section you cannot find structurally, FAIL.
 7. Note roughly what fraction of the file is echoed prompt.
+
+**Debate outputs (`02b-debate-<lane_id>.md`) use the Debate contract instead of items 2–3 and 6:** position statement, evidence/reasoning with at least one `[REASONED]` tag, rebuttal to the strongest opposing argument, the one flip-fact, KEY TENSION, COMMON GROUND; ≥2 distinct https URLs. Items 1, 4 (with the floor of 2), 5 and 7 apply unchanged.
 
 #### Step 3.2 — Build Phase 3 prompt
 
@@ -444,12 +446,14 @@ For health content specifically: also instruct the user to run RCT/meta-analysis
 
 #### Step 4.5 — Red Team pass (Phase 4.5 — BLOCKING when overlay 13 selected Red Team)
 
-Runs only when `00-context.md` records `red-team` (overlay 13, Mode 1). Mandatory when selected (overlay contract). The flow is Debate → Red Team → Decision: this pass attacks the draft recommendation that has emerged from Phases 2–4, before the Chairman consolidates it.
+Runs whenever `00-context.md` records `red-team` **or** `debate+red-team` (overlay 13, Mode 1). Mandatory when selected (overlay contract); cancelling requires the user's explicit decision, logged in `00-context.md` — never a silent skip. The flow is Debate → Red Team → Decision: this pass attacks the draft recommendation that has emerged from Phases 2–4, before the Chairman consolidates it.
 
 1. Write the one-paragraph **draft recommendation under attack** — from `03-conflict-map.md` and the surviving sources — with its key assumptions stated explicitly. Confirm it with the user.
-2. Build one prompt per participating lane from overlay 13, "Mode 1 — Red Team", assigning each lane 1–2 of the six attack vectors; the decorrelated lane is mandatory here. If Phase 1 staged these as `deferred_phase_prompts`, they may carry the declared placeholder `<DRAFT_RECOMMENDATION>` until this step fills it — the only sanctioned deferred token, and it must be filled before hand-off.
+2. Build one prompt per participating lane from overlay 13, "Mode 1 — Red Team", assigning each lane 1–2 of the six attack vectors; **the decorrelated lane is mandatory here** — if it was skipped at Step 2.2, stop and surface it: the user must restore the lane or explicitly cancel the mode, logged (same rule as Step 2.5). If Phase 1 staged these as `deferred_phase_prompts`, they may carry the declared placeholder `<DRAFT_RECOMMENDATION>` until this step fills it — the only sanctioned deferred token, and it must be filled before hand-off.
 3. Stage `04a-prompts-redteam-<lane_id>.md`; the user runs them on the same surfaces as Phase 2 and saves outputs as `04a-redteam-<lane_id>.md`. Pause.
-4. On resume: sort findings KILL > MAJOR > MANAGEABLE; explicitly flag the findings the user had not considered — those are the real blind spots. Carry all `04a-redteam-*` files into Phase 5, where the Decision Brief's UNRESOLVED DISAGREEMENTS, UNCONTESTED RISKS, and CORRECTION LEDGER sections consume them.
+4. On resume, **before anything else**: confirm a non-empty `04a-redteam-<lane_id>.md` exists for every lane staged in step 3. Phase 5 stays blocked while any required output is missing or empty — ask the user to complete or explicitly cancel.
+5. **Verify the new evidence.** Red-team outputs arrive after Phase 4 ran, and they routinely introduce new factual URLs. Extract every URL from the `04a-redteam-*` files and run it through the same verification as Steps 4.2–4.4 (Firecrawl/plausibility/manual as available); append survivors to `04-verified-sources.md` and rejects to `04-rejected.md`. The Chairman must never rely on an unverified red-team citation.
+6. Sort findings KILL > MAJOR > MANAGEABLE; explicitly flag the findings the user had not considered — those are the real blind spots. Carry all `04a-redteam-*` files into Phase 5, where the Decision Brief's UNRESOLVED DISAGREEMENTS, UNCONTESTED RISKS, and CORRECTION LEDGER sections consume them.
 
 #### Step 4.6 — Save outputs
 

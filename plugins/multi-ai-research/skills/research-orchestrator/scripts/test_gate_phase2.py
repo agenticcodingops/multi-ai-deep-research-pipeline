@@ -5,9 +5,11 @@ import io
 import json
 import os
 import shutil
+import socket
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -17,6 +19,7 @@ import gate_phase2 as gp
 
 FIXTURES = os.path.join(HERE, "fixtures", "phase2")
 PROMPT_SRC = os.path.join(FIXTURES, "02a-prompts-lanea.md")
+DEBATE_PROMPT_SRC = os.path.join(FIXTURES, "02b-prompts-debate-lanea.md")
 PROMPT_TAIL = "End of staged prompt for lane lanea."
 
 
@@ -27,9 +30,13 @@ def read_fixture(name):
 
 class GatePhase2Tests(unittest.TestCase):
 
+    def workdir(self):
+        path = tempfile.mkdtemp(prefix="gate2-")
+        self.addCleanup(shutil.rmtree, path, ignore_errors=True)
+        return path
+
     def stage(self, fixture, with_prompt=True, transform=None):
-        workdir = tempfile.mkdtemp(prefix="gate2-")
-        self.addCleanup(shutil.rmtree, workdir, ignore_errors=True)
+        workdir = self.workdir()
         text = read_fixture(fixture)
         if transform is not None:
             text = transform(text)
@@ -39,12 +46,29 @@ class GatePhase2Tests(unittest.TestCase):
             shutil.copyfile(PROMPT_SRC, os.path.join(workdir, "02a-prompts-lanea.md"))
         return workdir
 
+    def stage_text(self, text, with_prompt=True):
+        workdir = self.workdir()
+        with open(os.path.join(workdir, "02-lanea.md"), "w", encoding="utf-8") as fh:
+            fh.write(text)
+        if with_prompt:
+            shutil.copyfile(PROMPT_SRC, os.path.join(workdir, "02a-prompts-lanea.md"))
+        return workdir
+
+    def stage_debate(self, fixture):
+        workdir = self.workdir()
+        shutil.copyfile(os.path.join(FIXTURES, fixture),
+                        os.path.join(workdir, "02b-debate-lanea.md"))
+        shutil.copyfile(DEBATE_PROMPT_SRC,
+                        os.path.join(workdir, "02b-prompts-debate-lanea.md"))
+        return workdir
+
     def status(self, report, check):
         return report["files"][0]["checks"][check]["status"]
 
     def details(self, report, check):
         return " ".join(report["files"][0]["checks"][check]["details"])
 
+    # ------------------------------------------------------------ pass cases
     def test_pass_clean_lane(self):
         report = gp.run([self.stage("pass_clean_lane.md")])
         self.assertEqual(report["result"], "pass")
@@ -57,30 +81,64 @@ class GatePhase2Tests(unittest.TestCase):
         self.assertEqual(report["result"], "pass")
         self.assertEqual(self.status(report, "C3"), "PASS")
 
+    def test_hidden_echo_before_sentinel_passes_c5(self):
+        report = gp.run([self.stage("pass_hidden_echo_before_sentinel.md")])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(self.status(report, "C5"), "PASS")
+        self.assertEqual(report["files"][0]["split_method"], "sentinel")
+
+    def test_sources_assignment_line_not_heading(self):
+        def insert(text):
+            return text.replace(
+                "3. [MEDIUM] Community benchmark",
+                'Sources = ["alpha", "beta"]\n3. [MEDIUM] Community benchmark')
+        report = gp.run([self.stage("pass_clean_lane.md", transform=insert)])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(self.status(report, "C2"), "PASS")
+
+    # ---------------------------------------------------------------- C1
     def test_fail_echo_empty_answer(self):
         report = gp.run([self.stage("fail_echo_empty_answer.md")])
         self.assertEqual(report["result"], "fail")
+        self.assertEqual(report["files"][0]["split_method"], "prompt-tail")
+        self.assertEqual(self.status(report, "C1"), "FAIL")
         self.assertEqual(self.status(report, "C5"), "FAIL")
         self.assertIn("concealed", self.details(report, "C5"))
-
-    def test_fail_hidden_span_footnotes(self):
-        report = gp.run([self.stage("fail_hidden_span_footnotes.md")])
-        self.assertEqual(report["result"], "fail")
-        self.assertEqual(self.status(report, "C4"), "FAIL")
-        self.assertEqual(self.status(report, "C5"), "FAIL")
-
-    def test_fail_claims_without_delivery(self):
-        report = gp.run([self.stage("fail_claims_without_delivery.md")])
-        self.assertEqual(report["result"], "fail")
-        self.assertEqual(self.status(report, "C2"), "FAIL")
-        self.assertEqual(self.status(report, "C6"), "FAIL")
-        self.assertEqual(self.status(report, "C5"), "PASS")
 
     def test_fail_echo_no_boundary(self):
         report = gp.run([self.stage("fail_echo_no_boundary.md")])
         self.assertEqual(report["result"], "fail")
         self.assertEqual(self.status(report, "C1"), "FAIL")
         self.assertIn("boundary indeterminate", self.details(report, "C1"))
+        self.assertEqual(report["files"][0]["split_method"], "echo-backstop")
+
+    def test_diluted_echo_fails_c1(self):
+        text = ("Cite every factual claim with a LIVE, resolvable URL and "
+                "prioritise primary sources over aggregators.\n\n"
+                "The lane stopped after restating one requirement and produced "
+                "no structured answer at all.\n")
+        report = gp.run([self.stage_text(text)])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C1"), "FAIL")
+        self.assertEqual(report["files"][0]["split_method"], "echo-backstop")
+        self.assertIn("boundary indeterminate", self.details(report, "C1"))
+
+    def test_no_sentinel_no_echo_fails_c1(self):
+        def strip_all(text):
+            return text.split("===BEGIN LANE OUTPUT===", 1)[1]
+        report = gp.run([self.stage("pass_clean_lane.md", transform=strip_all)])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C1"), "FAIL")
+        self.assertEqual(report["files"][0]["split_method"], "unsplit")
+        self.assertIn("boundary unverifiable", self.details(report, "C1"))
+
+    def test_duplicate_tail_fails_c1(self):
+        def duplicate(text):
+            return text.replace("===BEGIN LANE OUTPUT===", PROMPT_TAIL) + \
+                "\n" + PROMPT_TAIL + "\n"
+        report = gp.run([self.stage("pass_clean_lane.md", transform=duplicate)])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C1"), "FAIL")
         self.assertEqual(report["files"][0]["split_method"], "echo-backstop")
 
     def test_prompt_tail_split(self):
@@ -97,6 +155,135 @@ class GatePhase2Tests(unittest.TestCase):
         self.assertTrue(any("prompt file not found" in n
                             for n in report["files"][0]["notes"]))
 
+    # ---------------------------------------------------------------- C5
+    def test_fail_hidden_span_footnotes(self):
+        report = gp.run([self.stage("fail_hidden_span_footnotes.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C4"), "FAIL")
+        self.assertEqual(self.status(report, "C5"), "FAIL")
+
+    def test_hidden_nested_fails_c5(self):
+        report = gp.run([self.stage("fail_hidden_nested.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C5"), "FAIL")
+        self.assertIn("concealed", self.details(report, "C5"))
+
+    def test_hidden_unclosed_fails_c5(self):
+        report = gp.run([self.stage("fail_hidden_unclosed.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C5"), "FAIL")
+        self.assertIn("malformed hidden markup", self.details(report, "C5"))
+
+    def test_hidden_class_fails_c5(self):
+        report = gp.run([self.stage("fail_hidden_class.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C5"), "FAIL")
+        self.assertIn("concealed", self.details(report, "C5"))
+
+    def test_hidden_comment_fails_c5(self):
+        report = gp.run([self.stage("fail_hidden_comment.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C5"), "FAIL")
+        self.assertIn("hidden comment", self.details(report, "C5"))
+
+    # ---------------------------------------------------------------- C4
+    def test_dead_markers_equal_urls_fails_c4(self):
+        report = gp.run([self.stage("fail_dead_markers_equal.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C4"), "FAIL")
+        self.assertIn("dead citation markers", self.details(report, "C4"))
+
+    def test_http_urls_dont_count(self):
+        report = gp.run([self.stage("fail_http_only_sources.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C4"), "FAIL")
+        self.assertIn("distinct https URLs", self.details(report, "C4"))
+        self.assertEqual(self.status(report, "C2"), "FAIL")
+        self.assertIn("Sources", self.details(report, "C2"))
+
+    def test_dead_marker_forms(self):
+        sample = u"[1, 2] [3-4] [3–4] [^note] [HIGH] [REASONED] [GROUND-TRUTH-VERIFIED]"
+        self.assertEqual(gp._dead_marker_count(sample), 4)
+
+    # ---------------------------------------------------------------- C2/C6
+    def test_fail_claims_without_delivery(self):
+        report = gp.run([self.stage("fail_claims_without_delivery.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C2"), "FAIL")
+        self.assertEqual(self.status(report, "C6"), "FAIL")
+        self.assertEqual(self.status(report, "C5"), "PASS")
+
+    # ---------------------------------------------------------------- debate
+    def test_pass_debate_lane(self):
+        report = gp.run([self.stage_debate("pass_debate_lanea.md")])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["files"][0]["kind"], "debate")
+        self.assertEqual(self.status(report, "C2"), "PASS")
+        self.assertEqual(self.status(report, "C3"), "PASS")
+        self.assertEqual(self.status(report, "C6"), "-")
+
+    def test_fail_debate_missing_elements(self):
+        report = gp.run([self.stage_debate("fail_debate_missing_elements.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C2"), "FAIL")
+        self.assertIn("common ground", self.details(report, "C2"))
+        self.assertEqual(self.status(report, "C3"), "FAIL")
+        self.assertIn("[REASONED]", self.details(report, "C3"))
+
+    # ---------------------------------------------------------------- URL vetting
+    def test_ssrf_rejected_pre_request(self):
+        for ip in ("127.0.0.1", "10.0.0.1", "169.254.169.254"):
+            with self.subTest(ip=ip):
+                infos = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, 443))]
+                with mock.patch("socket.getaddrinfo", return_value=infos), \
+                        mock.patch("http.client.HTTPSConnection") as conn:
+                    result = gp._head_check("https://internal-service.example.org/x")
+                self.assertIn("non-public", result)
+                conn.assert_not_called()
+
+    def test_credentials_url_rejected(self):
+        with mock.patch("socket.getaddrinfo") as gai, \
+                mock.patch("http.client.HTTPSConnection") as conn:
+            result = gp._head_check("https://user:secret@example.org/")
+        self.assertIn("credentials", result)
+        gai.assert_not_called()
+        conn.assert_not_called()
+
+    def test_local_hostname_rejected(self):
+        with mock.patch("socket.getaddrinfo") as gai, \
+                mock.patch("http.client.HTTPSConnection") as conn:
+            result = gp._head_check("https://printer.local/status")
+        self.assertIn("non-public hostname", result)
+        gai.assert_not_called()
+        conn.assert_not_called()
+
+    # ---------------------------------------------------------------- CLI
+    def test_bad_thresholds_exit_2(self):
+        workdir = self.stage("pass_clean_lane.md")
+        cases = [["--min-findings", "-1"], ["--url-ratio", "nan"],
+                 ["--url-ratio", "0"], ["--url-ratio", "inf"],
+                 ["--min-answer-chars", "x"]]
+        for extra in cases:
+            with self.subTest(extra=extra):
+                with contextlib.redirect_stdout(io.StringIO()), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    code = gp.main([workdir, "--json"] + extra)
+                self.assertEqual(code, 2)
+
+    def test_explicit_prompt_missing_exits_2(self):
+        workdir = self.stage("pass_clean_lane.md")
+        out_file = os.path.join(workdir, "02-lanea.md")
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = gp.main([out_file, "--prompt",
+                            os.path.join(workdir, "nope.md"), "--json"])
+        self.assertEqual(code, 2)
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = gp.main([workdir, "--prompts-dir",
+                            os.path.join(workdir, "nope-dir"), "--json"])
+        self.assertEqual(code, 2)
+
     def test_main_exit_codes(self):
         passing = self.stage("pass_clean_lane.md")
         buffer = io.StringIO()
@@ -110,6 +297,14 @@ class GatePhase2Tests(unittest.TestCase):
                 contextlib.redirect_stderr(io.StringIO()):
             code = gp.main([os.path.join(passing, "missing-subdir"), "--json"])
         self.assertEqual(code, 2)
+        # Malformed HTML must still yield valid JSON and exit 0/1, no traceback.
+        mangled = self.stage_text(
+            "<div <span ===BEGIN LANE OUTPUT===\n<p><b>fragment</i></div></span>\n")
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            code = gp.main([mangled, "--json"])
+        self.assertIn(code, (0, 1))
+        json.loads(buffer.getvalue())
 
 
 if __name__ == "__main__":

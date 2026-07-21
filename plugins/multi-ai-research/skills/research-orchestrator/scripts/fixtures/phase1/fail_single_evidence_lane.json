@@ -31,37 +31,37 @@
       "sub_question_id": "SQ1",
       "primary_agent": "Perplexity",
       "secondary_agent": "Gemini",
-      "source_type_required": "official documentation and reproducible benchmarks"
+      "source_type_required": "official_docs"
     },
     {
       "sub_question_id": "SQ1",
       "primary_agent": "Claude",
       "secondary_agent": null,
-      "source_type_required": "synthesis of the other lane outputs"
+      "source_type_required": "primary_text"
     },
     {
       "sub_question_id": "SQ2",
       "primary_agent": "Gemini",
-      "secondary_agent": "DeepSeek",
-      "source_type_required": "reproducible build benchmarks"
+      "secondary_agent": "DecorrelatedLane",
+      "source_type_required": "repo_docs"
     },
     {
       "sub_question_id": "SQ4",
       "primary_agent": "Grok",
       "secondary_agent": "Perplexity",
-      "source_type_required": "community forums and maintainer changelogs"
+      "source_type_required": "social_signal"
     },
     {
       "sub_question_id": "SQ4",
       "primary_agent": "Gemini",
       "secondary_agent": null,
-      "source_type_required": "maintainer changelogs"
+      "source_type_required": "repo_docs"
     },
     {
       "sub_question_id": "SQ3",
       "primary_agent": "Grok",
       "secondary_agent": "Claude",
-      "source_type_required": "community sentiment cross-check"
+      "source_type_required": "social_signal"
     }
   ],
   "lane_roles": [
@@ -95,7 +95,7 @@
     },
     {
       "lane_id": "deepseek",
-      "agent": "DeepSeek",
+      "agent": "DecorrelatedLane",
       "role": "decorrelated",
       "lineage": "decorrelated",
       "execution_surface": "manual"
@@ -106,61 +106,61 @@
       "sub_question_id": "SQ1",
       "agent": "Perplexity",
       "lane_id": "perplexity",
-      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ1",
       "agent": "Gemini",
       "lane_id": "gemini",
-      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ1",
       "agent": "Claude",
       "lane_id": "claude",
-      "ready_to_paste_prompt": "You are the Claude lane (synthesis role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Claude lane (synthesis role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ2",
       "agent": "Gemini",
       "lane_id": "gemini",
-      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ2",
-      "agent": "DeepSeek",
+      "agent": "DecorrelatedLane",
       "lane_id": "deepseek",
-      "ready_to_paste_prompt": "You are the DeepSeek lane (decorrelated role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the DecorrelatedLane lane (decorrelated role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ4",
       "agent": "Grok",
       "lane_id": "grok",
-      "ready_to_paste_prompt": "You are the Grok lane (sentiment role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Grok lane (sentiment role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ4",
       "agent": "Perplexity",
       "lane_id": "perplexity",
-      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ4",
       "agent": "Gemini",
       "lane_id": "gemini",
-      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ3",
       "agent": "Grok",
       "lane_id": "grok",
-      "ready_to_paste_prompt": "You are the Grok lane (sentiment role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Grok lane (sentiment role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     },
     {
       "sub_question_id": "SQ3",
       "agent": "Claude",
       "lane_id": "claude",
-      "ready_to_paste_prompt": "You are the Claude lane (synthesis role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+      "ready_to_paste_prompt": "You are the Claude lane (synthesis role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change my mind, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Ground truth register, claim GT1: A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator. Metric: Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop. Reference: https://example.org/benchmarks/gallery-build Mark agreement with the register [GROUND-TRUTH-VERIFIED], reliance on unverified register entries [GROUND-TRUTH-ASSERTED], and conflicts [CONTRADICTS-GROUND-TRUTH]. Close with a Coverage gaps list naming anything you could not verify."
     }
   ],
   "lanes_unavailable": [],
@@ -199,7 +199,7 @@
   ],
   "deferred_phase_prompts": [
     {
-      "phase": 5,
+      "phase": 4.5,
       "purpose": "Adversarial review of the draft recommendation",
       "prompt_template": "Challenge the following draft verdict: <DRAFT_RECOMMENDATION>. List the three strongest objections, tag each [HIGH], [MEDIUM], or [LOW], and cite a LIVE, resolvable URL for every objection.",
       "declared_placeholders": [
