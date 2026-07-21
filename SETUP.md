@@ -63,7 +63,7 @@ The two skills — **research-orchestrator** (walks you through all six phases) 
 /plugin install multi-ai-research@agenticcodingops
 ```
 
-This works in **both Claude Code and Cowork**. No ZIP handling, no file copying, no skills folder to create. Restart the app after installing, then verify in a fresh chat: *"What skills do you have available?"* — both skills should appear.
+This works in **both Claude Code (Terminal, not VS Code Extension) and Cowork**. No ZIP handling, no file copying, no skills folder to create. Restart the app after installing, then verify in a fresh chat: *"What skills do you have available?"* — both skills should appear.
 
 ---
 

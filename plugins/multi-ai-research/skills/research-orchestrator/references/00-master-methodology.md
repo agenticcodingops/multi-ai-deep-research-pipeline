@@ -2,8 +2,8 @@
 
 **Owner:** AgenticCodingOps  
 **Status:** Living document — update when the toolchain changes  
-**Version:** 1.1 (2026-06-01 — adds decorrelated lane, eval gate, automation defaults, correlated-error floor; see the project changelog)  
-**Reads with:** `01-prompts-library.md` (mandatory), one or more `02-08-overlay-*.md` per project
+**Version:** 1.2 (2026-07-21 — adds ground-truth verification, deliberation-mode phase slots (2.5/4.5), lane roles + agent-access inventory, capability-gated Chairman; see the plugin CHANGELOG. v1.1 (2026-06-01) added the decorrelated lane, eval gate, automation defaults, correlated-error floor)  
+**Reads with:** `01-prompts-library.md` (mandatory), one or more overlay files (`02-` through `08-`, or `13-` for decision research) per project
 
 ---
 
@@ -47,6 +47,8 @@ For software projects, after Phase 5 the `05-dossier.md` file migrates into the 
 | **4.5 Eval gate** *(NEW; optional)* | Cowork/Claude Code | Optional calibration: run a small golden-set regression check before synthesis (see Decision rules) | 5 min | inline note in `00-context.md` |
 | **5. Consolidation** | Claude, strongest available model (fresh chat, max effort) | Run Chairman prompt with use-case-specific output format from overlay | 15 min | `05-dossier.md` |
 | **6. Output routing** | Use-case specific (Spec Kit, video record, WordPress, etc.) | Move dossier into target system | 10–30 min | Final deliverable |
+
+**Between-phase slots (v1.2):** **Phase 2.5** holds the Debate mode and **Phase 4.5** holds the Red Team mode when `13-overlay-deliberation-modes.md` selects them — a selected mode is mandatory and blocking, not advisory (see overlay 13, Modes 1–2). Phase 4.5 is also the slot for the optional eval gate (row above); the two share the slot and are independent of each other.
 
 **Total wall-clock for a typical dossier: 90–120 min.** Most of Phase 2 is unattended.
 
@@ -141,6 +143,7 @@ The full Chairman prompt template is in `01-prompts-library.md`.
 | Overlay: WordPress + Elementor SEO | `06-overlay-wordpress-seo.md` |
 | Overlay: health content | `07-overlay-health-content.md` |
 | 🆕 Overlay: deck + screencast single-source-of-truth | `08-overlay-deck-and-screencast.md` |
+| Overlay: deliberation modes / decision research (use case 8) | `13-overlay-deliberation-modes.md` |
 | Starting a new chat in this project | `12-project-startup-checklist.md` |
 
 ---

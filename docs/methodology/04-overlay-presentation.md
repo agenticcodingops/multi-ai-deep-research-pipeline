@@ -1,6 +1,7 @@
 # Overlay — PowerPoint / Conference Talk Presentations
 
 **Reads with:** `00-master-methodology.md` and `01-prompts-library.md`
+**Superseded-by:** `08-overlay-deck-and-screencast.md` — for this overlay's Phase-6 section whenever a screencast or video is also produced (see the v1.1 note below)
 
 ---
 

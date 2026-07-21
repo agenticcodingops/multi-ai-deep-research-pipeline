@@ -1,8 +1,8 @@
 # Content & Product Research — Operational Runbook
 
 **Owner:** AgenticCodingOps
-**Status:** v1.1 — companion to `10-software-dev-research-runbook.md`; includes methodology v1.1 updates (decorrelated lane, confidence tags, live-URL rule, deck+screencast SSOT overlay)
-**Reads with:** project knowledge artifacts 00–01, overlays 02–08, runbook 09 (Cowork/skills setup), 12 (project startup checklist); CHANGELOG-v1.1.md for v1.1 rationale
+**Status:** v1.2 (2026-07-21 — decision research routes to overlay 13; agent-access inventory drives the stack; specialist lanes formalised; capability-gated Chairman) — companion to `10-software-dev-research-runbook.md`; v1.1 added the decorrelated lane, confidence tags, live-URL rule, deck+screencast SSOT overlay
+**Reads with:** project knowledge artifacts 00–01, overlays 02–08 and 13, runbook 09 (Cowork/skills setup), 12 (project startup checklist); CHANGELOG-v1.1.md for v1.1 rationale
 
 ---
 
@@ -14,7 +14,7 @@ For coding projects, use `10-software-dev-research-runbook.md` instead.
 
 The two runbooks share the same 6-phase pipeline, the same skills (`research-orchestrator`, `research-requirements-check`), and the same Claude project knowledge base. They differ in:
 - Phase 0 setup (different workspace folder, no repo)
-- Phase 1 decomposition (use-case-specific via overlays 03–07)
+- Phase 1 decomposition (use-case-specific via overlays 03–08, or 13 for decision research)
 - Phase 2 agent stack (often includes Elicit + Consensus for health; excludes them for software)
 - Phase 5 output format (set by overlay, not by ADR template)
 - Phase 6 routing (publishing/recording instead of `/speckit.specify`)
@@ -33,7 +33,7 @@ The two runbooks share the same 6-phase pipeline, the same skills (`research-orc
 | WordPress + Elementor SEO blog article | This runbook | 06-overlay-wordpress-seo.md | Published blog post |
 | Health content (back pain, longevity, biohacking, focus) | This runbook | 07-overlay-health-content.md | Evidence-graded protocol → any output format |
 | Market / product research with affiliate links | This runbook | 06 (primary) + 03 (if also YouTube) | Blog + video with affiliate links |
-| Personal research (best laptop, life decisions, travel) | This runbook | Match nearest overlay; usually 06 for write-up | Notes for personal use or content |
+| Personal / market decision research (best laptop, life decisions, career moves) | This runbook | 13-overlay-deliberation-modes.md (primary — Decision Brief output) | Decision Brief the operator acts on |
 
 If a project has multiple output formats (e.g., hair-product research → blog + YouTube + LinkedIn post), pick the **most demanding overlay as primary** and route the dossier through other overlays in Phase 6. WordPress SEO is usually the strictest (keyword discipline, top-10 SERP analysis); ebook chapters are second strictest (word count discipline, footnoted citations). See "Multi-deliverable projects" below.
 
@@ -192,14 +192,25 @@ The orchestrator's Phase 1 output produces ready-to-paste Phase 2 prompts per ag
 | 3 | Grok DeepSearch (SuperGrok) | Reddit, X community sentiment, recent reviews | `02-grok.md` |
 | 4 | Claude, strongest available model (web search, separate tab from this project) | Cross-cutting synthesis, contrarian framing | `02-claude.md` |
 | 5 | **🆕 DeepSeek (chat.deepseek.com web UI, DeepThink mode)** | **Error decorrelation — non-Western training lineage** | `02-deepseek.md` |
+| 6 | ChatGPT Deep Research — include whenever the agent-access inventory (Step 0.3) shows the operator has it | The only OpenAI-lineage lane: leaving it out drops a whole training lineage from the fan-out | `02-chatgpt.md` |
 
 For non-confidential content research (which is most content projects — hair products, health, biohacking, methodology), the DeepSeek web UI is the right tool. For any confidential content (client data, HIPAA-equivalent material, business-sensitive context), the question is where the prompt data goes, not whose model it is — keep the lane but change the route: a Western-hosted DeepSeek API (confirm the hosting region) or self-hosted inference. Drop the lane only when neither route is available.
+
+### Specialist lanes (counting / empirical work) — v1.2
+
+Some projects need a lane that researches the **competition or the raw numbers rather than the topic** — the SERP-analysis agent below is the canonical case; a live job-board scan or a price-availability sweep are others. These lanes are **empirical, not interpretive**: they count, list, and quote what a source says today, and their value is coverage, not judgement. Three rules:
+
+- Declare them in Phase 1's `lane_roles` like any other lane (role `evidence`), with an honest `execution_surface` — a named product, `browser-agent`, `orchestrator-local` (the orchestrator session runs the queries itself via its fetch tooling), or `manual`.
+- Training-lineage decorrelation matters much less for a counting lane than for a reasoning lane, so `orchestrator-local` is an acceptable surface here — it is **never** acceptable for a synthesis lane.
+- When a specialist lane shares a lineage with a reasoning lane (e.g. both run on the same model family), tag that overlap in its output so Phase 3 never mistakes their agreement for independent corroboration.
+
+Files follow the standard convention: prompts staged as `02a-prompts-<lane_id>.md`, output saved as `02-<lane_id>.md`, with `lane_id` declared in `lane_roles`.
 
 ### Additional agents per overlay
 
 **WordPress SEO (06):**
 - 6th agent (on top of the 5-agent base): Perplexity in STANDARD (not Deep Research) mode — runs the "top 10 Google UK results for <primary keyword>" query to surface what competitors say. Output as `02-serp-analysis.md`. Critical for differentiation.
-- ChatGPT free-tier Deep Research (7th, optional) — adds another perspective at zero cost
+- ChatGPT Deep Research (7th, optional if not already in the base stack per the inventory) — enterprise/regulated-industry contrast and the OpenAI lineage
 
 **Market / product research with affiliate links:**
 - Same as WordPress SEO above
@@ -289,9 +300,9 @@ Save survivors to `04-verified-sources.md`, rejects to `04-rejected.md`. Rejecte
 
 ---
 
-## Phase 5 — Chairman synthesis (Claude.ai web, this project, max thinking)
+## Phase 5 — Chairman synthesis (capability gate: strongest Claude model, max extended thinking, fresh context)
 
-Same procedure as software dev, but the `<output_format>` block in the Chairman prompt comes from the use-case overlay (03–07), not from the spec-dev overlay.
+Same procedure as software dev, but the `<output_format>` block in the Chairman prompt comes from the use-case overlay (03–08, or 13 for decision research), not from the spec-dev overlay. Any surface meeting the three capabilities qualifies — a fresh subagent, a fresh Claude.ai web chat, or (only when little has run in it) the orchestrator session itself; see the orchestrator skill's Phase 5 routing.
 
 ### Common Phase 5 prompt template for content
 
@@ -436,7 +447,7 @@ Same rule as software dev. They surface peer-reviewed papers, which don't help w
 
 ### 8. The personal-research case (best laptop, life decisions) is still worth a dossier
 
-When the deliverable is "I'll decide myself," the dossier is for *you*, not for publication. Use the WordPress SEO overlay's structure (it's the most decision-oriented) but skip Phase 6 publishing. The contradiction matrix and verified-sources list are exactly what you need to make a good decision yourself.
+When the deliverable is "I'll decide myself," the dossier is for *you*, not for publication. Use `13-overlay-deliberation-modes.md` as the **primary** overlay: its Phase 1 demands verdicts rather than descriptions, its Debate and Red Team modes exist for exactly this pressure-testing, and its Decision Brief is the artifact you actually want — skip Phase 6 publishing entirely. (Before v1.1 this use case borrowed overlay 06's structure as the most decision-oriented available; overlay 13 now supersedes that for use case 8.)
 
 ### 9. Deck + screencast = one source of truth, not two (v1.1 addition)
 

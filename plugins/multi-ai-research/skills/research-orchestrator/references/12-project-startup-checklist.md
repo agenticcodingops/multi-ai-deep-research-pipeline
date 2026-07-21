@@ -29,6 +29,8 @@ Ask the user (or infer from their opening message + attachments) which use case 
 | Ebook | Mentions of book, ebook, chapter, long-form, multi-chapter, KDP, EPUB | `05-overlay-ebook.md` |
 | WordPress / SEO article | Mentions of WordPress, blog post, Elementor, SEO, keyword, ranking, search | `06-overlay-wordpress-seo.md` |
 | Health content | Mentions of low back pain, lifting, longevity, focus, biohacking, fitness, recovery, nootropics, supplements, sleep | `07-overlay-health-content.md` |
+| Deck + screencast (one source of truth) | Mentions of BOTH slides AND a video/screencast produced from the same content | `08-overlay-deck-and-screencast.md` |
+| Decision research (use case 8) | Mentions of "should I", "which option", go/no-go, build-vs-buy, invest-or-not, a personal or market decision the operator will act on | `13-overlay-deliberation-modes.md` |
 
 If the use case is ambiguous, ask a single clarifying question. Do not ask multiple. The fastest disambiguator is: **"What's the final form this work takes — script, slides, blog post, ebook chapter, code, or health article?"**
 
@@ -187,7 +189,7 @@ Watch for and pre-empt:
 
 This artifact set is a living document. Update when:
 
-- A new use case emerges (add a new overlay file, e.g., `09-overlay-podcast-script.md`)
+- A new use case emerges (add a new overlay file, e.g., `14-overlay-podcast.md` — numbers through 13 are taken)
 - The tool stack changes (e.g., a paid tool purchased after a trial period — update `00-master-methodology.md` agent inventory)
 - A specific prompt gets refined through usage — update `01-prompts-library.md` with the better version
 - A quality bar gets tightened or relaxed based on observed output quality — update the relevant overlay's "Quality bar specific to..." section

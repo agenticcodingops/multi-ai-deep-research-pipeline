@@ -1,7 +1,7 @@
 # Prompts Library — Multi-AI Research Pipeline
 
 **Owner:** AgenticCodingOps  
-**Version:** 1.1 (2026-06-01 — Phase-2 output structure adds confidence + "what would change" + live-URL rule; Phase-3 adds the keep-matrix / no-default-peer-review note; see the project changelog)  
+**Version:** 1.2 (2026-07-21 — Phase-1 spec becomes canonical (lane roles, ground truth, contaminant audits, deferred placeholders); Phase-2 adds the output sentinel + ground-truth block; Phase-3 adds the sentiment-lane rule + conditional DCI tally; see the plugin CHANGELOG. v1.1 (2026-06-01) added confidence + "what would change" + live-URL rule + the keep-matrix note)  
 **Reads with:** `00-master-methodology.md`
 
 ---
@@ -24,19 +24,52 @@ You are a research architect. The research question is:
 Decision context: <one sentence — what will I do with this dossier?>
 Time horizon: prioritise sources from 2024-2026 unless the question is intrinsically historical.
 
-Output strict JSON with these keys:
-- sub_questions: array of 4-8 atomic, independently researchable questions
+Output strict JSON with these keys (this is the canonical Phase 1 output spec, v1.2 / schema_version 2):
+- schema_version: 2
+- sub_questions: array of 4-8 atomic, independently researchable questions, each an object
+  {id ("SQ1"…), question, verdict_forced, falsifiable} — verdict_forced states the decision the
+  answer must land on (a recommendation plus a confidence level, never a summary); falsifiable
+  must be true. Reject any sub-question whose best possible answer is a summary.
+- lane_roles: array of {lane_id, agent, role, lineage, execution_surface}
+  where lane_id is the lowercase slug used in the dossier filenames (02a-prompts-<lane_id>.md),
+  role ∈ [evidence, sentiment, synthesis, decorrelated],
+  lineage ∈ [Anthropic, OpenAI, Google, xAI, decorrelated, mixed],
+  and execution_surface is a named product (where the operator runs the prompt), or one of:
+  browser-agent, orchestrator-local, manual
+- phase_2_prompts: array of {sub_question_id, agent, lane_id, ready_to_paste_prompt} — the
+  CANONICAL statement of who researches what; each prompt fully formed, zero placeholders
 - agent_assignments: array of {sub_question_id, primary_agent, secondary_agent, source_type_required}
   where primary_agent ∈ [Perplexity, Gemini, Grok, Claude, ChatGPT, DecorrelatedLane, NotebookLM, Elicit, Consensus]
   and source_type_required ∈ [official_docs, peer_reviewed, news_recent, social_signal, primary_text, vendor_pricing, repo_docs]
+  — DERIVED from phase_2_prompts and required to agree with it exactly: every (sub-question,
+  agent) pair implied by a non-null assignment has exactly one prompt, and no prompt lacks an
+  assignment
+- lanes_unavailable: array — one line per useful lane skipped because the operator lacks access
+- inputs / input_audits (when input files were supplied): inputs is an array of {input_id, name,
+  classification ∈ [trusted, under_scrutiny], contaminants (optional array of strings the
+  operator does not want propagated)}; input_audits holds one audit block per under-scrutiny
+  input, keyed by input_id. Two-tier contaminant rule: an audit block MUST be able to name the
+  contaminant it reports; NO ready_to_paste_prompt may carry it.
+- ground_truth (when the operator recorded ground-truth claims): array of {claim_id ("GT1"…),
+  statement, metric_definition, status ∈ [verified, asserted], source_url (https)} — carried
+  verbatim from 00-context.md, tags as verified at Step 0.6
+- deferred_phase_prompts (optional): prompts for later passes (Debate, Red Team) may carry
+  placeholder tokens ONLY if each token is listed, exactly as it appears (delimiters included,
+  e.g. "<DRAFT_RECOMMENDATION>"), in that entry's declared_placeholders array
 - disqualifying_sources: array of source patterns to reject
 - success_criteria: array of bullets — what a publishable answer must include
 - known_traps: array of likely failure modes for this specific topic
 
+Assignment rule: maximise distinct training lineages before adding depth within a lineage, and
+assign against the operator's real agent-access inventory (provided in this prompt), never an
+assumed stack. Justify in one line any available lineage left unused. Every sub-question needs
+at least 2 evidence-bearing lanes (role evidence or decorrelated); a sentiment lane may carry
+community-signal sub-questions but never a load-bearing evidence question alone.
+
 Do not answer the questions. Plan only.
 ```
 
-**Adaptation per use case:** Each overlay file (`02-` through `08-`) adds one or two extra instructions. Apply them additively.
+**Adaptation per use case:** Each overlay file (`02-` through `08-`, or `13-` for decision research) adds one or two extra instructions. Apply them additively.
 
 ---
 
@@ -48,6 +81,9 @@ Do not answer the questions. Plan only.
 Research question: <SUB_QUESTION>
 
 Requirements:
+- Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before
+  anything else — including before any restatement of this prompt. Everything before that line
+  is treated as echoed prompt and ignored by the quality gate.
 - Cite every factual claim with a LIVE, resolvable URL (https://…). Do NOT use bare reference
   markers, footnote numbers, or tool-internal citation tokens — they do not survive copy-paste
   and make the source unverifiable. If you cannot produce a real URL, mark the claim [UNVERIFIED].
@@ -68,6 +104,25 @@ Output structure (markdown):
 ```
 
 > 🆕 v1.1 changes: added the **live-URL rule** (§ requirement 1), the **confidence/abstention tag** (§ requirement 3), and section **4 "What would change your recommendation."** Rationale in CHANGELOG (#3, #7).
+> v1.2: added the **output sentinel** (first requirement). Agents routinely restate the prompt before answering; because the prompt itself quotes the confidence tags and standing rules, any check run over the whole file passes on the echo alone. All structural gates score only what follows the sentinel.
+
+### Ground-truth block (v1.2 — prepend to every Phase 2 prompt when claims exist)
+
+When the orchestrator recorded ground-truth claims (Step 0.3, verified at Step 0.6), prepend this block to every `ready_to_paste_prompt`, filled from `00-context.md`:
+
+```
+<ground_truth>
+The operator asserts the following claims. Tag semantics:
+[GROUND-TRUTH-VERIFIED] — re-checked against its source URL this session. This overrides your
+research: if your findings contradict it, REPORT the contradiction explicitly, tagged
+[CONTRADICTS-GROUND-TRUTH], with your source — but do not substitute your own figure.
+[GROUND-TRUTH-ASSERTED] — operator-supplied, not re-verified this session. Treat as a strong
+prior: you may contradict it, but only with a cited primary source.
+Each claim states its metric definition. Verify against that definition — not a lookalike
+metric (a rank change is not a volume change).
+Claims (one per line): claim_id | statement | metric definition | source URL | tag
+</ground_truth>
+```
 
 **Tab-by-tab procedure:**
 1. **Perplexity Pro:** "Deep Research" mode. Paste Perplexity-tagged sub-questions. Submit. Next tab.
@@ -80,6 +135,8 @@ Output structure (markdown):
 
 **🆕 Phase 2 sanity check (3 min — now includes a paste-check):**
 1. No truncation. 2. Required 6-section structure present. 3. Citation density adequate. 4. **Live-URL paste-check: spot-open 3 citations per file. If they're dead markers or won't resolve, the file fails — re-export or re-run that agent before Phase 3.** 5. Confidence tags present. 6. Project constraints honoured.
+
+> v1.2 — how these checks are scored: every structural check (2, 3, 5) is computed on the **answer only** — the text after the `===BEGIN LANE OUTPUT===` sentinel — never on the whole file, because an echoed prompt satisfies every substring check by itself. Dead markers include `[n]`, `[^n]` (Perplexity's default export), `【n†…】`, and references concealed in hidden `<span style="display:none">` blocks; escaped tags like `\[HIGH\]` count as tags after normalisation. The orchestrator skill runs these checks mechanically (`scripts/gate_phase2.py`) and treats "the output claims a section the structural check cannot find" as a failure in its own right.
 
 ---
 
@@ -100,15 +157,23 @@ Below are independent research outputs on the question: <RESEARCH_QUESTION>
 Your job:
 1. AGREEMENT: every claim in 2+ outputs, with which sources support it. Flag where ALL
    supporting agents share a training lineage (possible correlated-error false consensus).
+   A sentiment lane (role "sentiment" in lane_roles) may NEVER constitute one of the 2+
+   outputs required for AGREEMENT. Report sentiment-lane concurrence separately as
+   [SENTIMENT-CONCUR], which is not corroboration.
 2. CONFLICT: every claim where outputs disagree. Present each side with its sources.
    Do NOT pick a winner. The conflict is the value.
 3. SINGLE-SOURCE: claims in only one output. Flag, don't discard.
 4. GAPS: sub-questions none answered well.
 5. SUSPECT-CITATIONS: URLs with implausible structure — sequential/round arxiv IDs,
    unrecognised domains, dead reference markers, auto-generated-looking paths.
+6. DCI TALLY (only when overlay 13 is active): three integers — contradictions, corrections,
+   unique insights. No commentary.
 
-Output strict markdown with those five sections. Do not synthesise yet.
+Output strict markdown with those sections — five, six when the DCI tally is requested.
+Do not synthesise yet.
 ```
+
+The six input blocks shown are the standard set: include one `<lane_id>_output` block for every lane that actually ran (project-specific lanes included), plus one `<lane_id>_debate_output` block per lane when the Debate pass (Phase 2.5) ran.
 
 > 🆕 v1.1: AGREEMENT step now flags same-lineage corroboration (correlated-error risk).
 
@@ -164,6 +229,9 @@ before responding.
 <claude_report>…</claude_report>
 <chatgpt_report>…</chatgpt_report>
 <decorrelated_lane_report>…</decorrelated_lane_report>
+<ground_truth>… (when recorded — include the tag semantics block)</ground_truth>
+<debate_reports>… (when the Phase 2.5 Debate pass ran)</debate_reports>
+<red_team_findings>… (when the Phase 4.5 Red Team pass ran)</red_team_findings>
 <conflict_map>…</conflict_map>
 <verified_sources>…</verified_sources>
 <rejected_sources>…</rejected_sources>
@@ -181,11 +249,15 @@ before responding.
 - Paraphrase. Quote ≤15 words from any single source. Never string two short quotes.
 - Every numerical claim names its source inline.
 - Do NOT smooth over disagreements. Disagreement is the value.
+- Honour ground-truth tags where a <ground_truth> block is present: [GROUND-TRUTH-VERIFIED]
+  claims override contradicting reports — carry any [CONTRADICTS-GROUND-TRUTH] finding into
+  the dossier as a flagged contradiction, never silently substitute either figure.
+  [GROUND-TRUTH-ASSERTED] claims are strong priors that a cited primary source may overturn.
 - Do not introduce claims absent from the inputs. Do not cite any URL rejected in Phase 4.
 </rules>
 
 <output_format>
-{INSERT THE USE-CASE-SPECIFIC OUTPUT FORMAT FROM THE RELEVANT OVERLAY — see 02-08}
+{INSERT THE USE-CASE-SPECIFIC OUTPUT FORMAT FROM THE RELEVANT OVERLAY — see 02-08, or 13 (Decision Brief) for decision research}
 </output_format>
 ```
 
@@ -211,7 +283,7 @@ Output the revised dossier + a numbered list of corrections.
 
 ## Phase 6 — Output routing prompts
 
-Use-case-specific. See the relevant overlay (`02-08`). For deck + screencast, use the unified `08-overlay-deck-and-screencast.md` (supersedes the Phase-6 sections of `03` and `04`).
+Use-case-specific. See the relevant overlay (`02`–`08`, or `13` for decision research). For deck + screencast, use the unified `08-overlay-deck-and-screencast.md` (supersedes the Phase-6 sections of `03` and `04`).
 
 ---
 

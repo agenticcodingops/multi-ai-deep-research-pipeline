@@ -10,7 +10,7 @@
 
 This is the playbook for running multi-AI research against a new software development project — greenfield or brownfield. It captures what actually worked on the pilot project, including the deviations from the standard 6-phase methodology that real projects required.
 
-For non-coding work (YouTube, ebooks, presentations, WordPress, health), use the relevant overlay file (03-07) plus 12-project-startup-checklist.md. A dedicated content runbook will follow.
+For non-coding work (YouTube, ebooks, presentations, WordPress, health, decision research), use the relevant overlay file (03–08, or 13 for decision research) plus 12-project-startup-checklist.md. The content runbook is `11-content-research-runbook.md`.
 
 ---
 
@@ -316,7 +316,7 @@ Wait for my "manual verification complete" before Phase 5.
 
 ---
 
-## Phase 4.5 — Eval gate (OPTIONAL — calibration only)
+## Phase 4.5 — Eval gate (OPTIONAL — calibration only; shares the Phase 4.5 slot with overlay 13's Red Team mode, independently of it)
 
 This is **not a mandatory phase**. Use only when you've made a material change to the methodology (e.g., adding a new agent, changing a Phase 1 prompt, updating a quality bar) and want to verify the change didn't silently degrade output quality.
 

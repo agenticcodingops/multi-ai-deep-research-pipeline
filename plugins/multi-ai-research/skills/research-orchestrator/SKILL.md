@@ -21,7 +21,7 @@ Use this skill whenever the user wants to start, resume, or manage a multi-AI re
 
 This skill is the **session-level coordinator** — it manages the dossier folder, walks the user through phases sequentially, calls the requirements-quality-check skill when appropriate, and bridges between the file-system environment (Cowork / Claude Code) and Claude.ai web for cognitive phases.
 
-This skill does NOT itself execute Phases 1, 3, or 5 (the cognitive phases) when running in Cowork or Claude Code with default models. It prepares inputs and hands off to Claude.ai web for those phases when model quality matters. It DOES execute Phases 0, 2 (preparation), 4 (verification), and 6 (routing) directly.
+This skill does NOT itself execute Phases 1, 3, or 5 (the cognitive phases) inline by default. It prepares inputs and hands off to a qualifying surface — a fresh Claude.ai web chat, or for Phase 5 any surface meeting the capability gate at Step 5 (a fresh subagent on the strongest model qualifies). It DOES execute Phases 0, 2 (preparation), 4 (verification), and 6 (routing) directly.
 
 ---
 
@@ -29,15 +29,20 @@ This skill does NOT itself execute Phases 1, 3, or 5 (the cognitive phases) when
 
 Before this skill runs, verify:
 
-1. **Bundled reference integrity.** This skill ships its methodology artifacts inside the skill at `./references/` — 14 files, `00-master-methodology.md` through `13-overlay-deliberation-modes.md`. Confirm the folder exists and contains, at minimum: `00-master-methodology.md`, `01-prompts-library.md`, overlays `02-` through `07-`, `08-overlay-deck-and-screencast.md`, `12-project-startup-checklist.md`, and `13-overlay-deliberation-modes.md`. If any expected file is missing, **halt and report exactly which file is missing** — the installation is incomplete and the user should reinstall the plugin. Never degrade silently to a partial overlay set.
+1. **Bundled reference integrity.** This skill ships its methodology artifacts inside the skill at `./references/` — 14 files, `00-master-methodology.md` through `13-overlay-deliberation-modes.md`. Confirm the folder exists and contains, at minimum: `00-master-methodology.md`, `01-prompts-library.md`, overlays `02-` through `07-`, `08-overlay-deck-and-screencast.md`, `12-project-startup-checklist.md`, and `13-overlay-deliberation-modes.md`. If any expected file is missing, **halt and report exactly which file is missing** — the installation is incomplete and the user should reinstall the plugin. Never degrade silently to a partial overlay set. Additionally verify the critical references are **readable, not merely present** — a zero-byte, truncated, or encoding-mangled copy is as fatal as a missing one. Every listed file must be non-zero size, and these anchor strings must resolve: `00-master-methodology.md` contains `Decorrelated-lane rule`; `01-prompts-library.md` contains `Chairman of a multi-AI research council`; `08-overlay-deck-and-screencast.md` contains `SPEAKER_NOTES`; `13-overlay-deliberation-modes.md` contains `<output_format> — DECISION BRIEF`. On any failure, halt and name the file and the specific check that failed.
 2. **Requirements-check availability.** The `research-requirements-check` skill ships in the same plugin as this skill. Check by skill availability (invoke it by name when Step 0.5 needs it), not by filesystem path — installed skill locations differ per surface. If it is unavailable, warn the user that requirements auditing will be skipped; the rest of the pipeline still runs.
-3. **Agent access.** The user needs access to Claude.ai web (with extended thinking) for the cognitive phases, plus deep-research-capable access to Perplexity, Gemini, and Grok for Phase 2 — and, for the decorrelated lane, a DeepSeek route (web UI, Western-hosted API, or self-hosted; see Step 2.2). Confirm in the opening message if uncertain.
+3. **Agent access.** The user needs access to Claude.ai web (with extended thinking) for the cognitive phases, plus deep-research-capable access to Perplexity, Gemini, and Grok for Phase 2 — and, for the decorrelated lane, a DeepSeek route (web UI, Western-hosted API, or self-hosted; see Step 2.2). The full per-user inventory is taken at Step 0.3 and persisted in `research-config.md`. Confirm in the opening message if uncertain.
+4. **Gate scripts.** `./scripts/validate_phase1.py` and `./scripts/gate_phase2.py` ship with this skill and implement the blocking gates at Steps 1.5 and 3.1 (invoke with `python`; use `python3` on POSIX surfaces where `python` is absent). If Python is unavailable on this surface, the gates still run — as the manual fallback checklist documented at each step. **A gate is never skipped because the script cannot execute.**
 
 If prerequisite 1 fails, halt. If prerequisite 3 is uncertain, surface it and let the user decide.
 
 ---
 
 ## Procedure
+
+### The overlay contract (read first)
+
+Any mechanism an active overlay declares **mandatory** — a selected deliberation mode, an output-format block, a decomposition adjustment, a required tally — becomes a **blocking step** in this procedure, never advisory prose. Overlays declare hooks by exact section name (e.g. overlay 13's "### Phase 1 — decomposition adjustment"), and this procedure wires each hook to a numbered step. If an active overlay declares a mandatory mechanism that no step below wires in, that is a defect in this skill: halt and surface it to the user rather than skipping it silently.
 
 ### Phase 0 — Project setup
 
@@ -91,7 +96,9 @@ Map to an overlay file and read it from `./references/` for the use-case-specifi
 | 7 | `./references/08-overlay-deck-and-screencast.md` — supersedes running overlays 03 and 04 separately whenever both a deck and a screencast come from one research pass |
 | 8 | `./references/13-overlay-deliberation-modes.md` — Phase 5 uses its Decision Brief output format |
 
-**Layering note:** overlay 13 also **layers on top of another overlay** when a dossier under any use case supports a decision (go/no-go, build/buy, launch, investment). Keep the primary overlay from the table and apply overlay 13 additionally — it is an additive Phase-2/Phase-3 pass, never an alternative primary. Record both overlays in `00-context.md`.
+**Layering note:** overlay 13 also **layers on top of another overlay** when a dossier under any use case supports a decision (go/no-go, build/buy, launch, investment). Keep the primary overlay from the table and apply overlay 13 additionally — it adds between-phase passes (Phase 2.5, Phase 4.5), never replaces the primary. Record both overlays in `00-context.md`.
+
+**Deliberation-mode selection (whenever overlay 13 is active — primary or layered).** Run overlay 13's Mode selector table now and record the selection in `00-context.md` under `## Deliberation mode(s)`: `none`, `debate`, `red-team`, `debate+red-team`, or `first-principles`. A selected mode is **mandatory and blocking** (overlay contract): Debate runs at Phase 2.5 (Step 2.5), Red Team at Phase 4.5 (Step 4.5), and First Principles shapes the Step 1.2 decomposition prompt.
 
 #### Step 0.2 — For spec-driven dev, identify greenfield vs brownfield
 
@@ -116,10 +123,14 @@ Ask:
 > "1. What's the research question? One or two sentences.
 > 2. Decision context: what will you do with the dossier? (e.g., 'Decide between AKS and ECS for the new platform', 'Record a 10-minute YouTube video next Saturday', 'Publish a 2,500-word SEO article')
 > 3. Time horizon: when do you need this done?
-> 4. Existing inputs: any files you want me to use as input? (Requirements docs, prior research, brand guidelines, etc.)
-> 5. Confidentiality: does this research involve confidential material (internal architecture, client code, business-sensitive context), or is it non-confidential/public? This determines how the decorrelated research lane is routed in Phase 2 — web UI, Western-hosted API, or self-host (see Step 2.2)."
+> 4. Existing inputs: any files you want me to use as input? (Requirements docs, prior research, brand guidelines, etc.) For each input, is it **trusted** (use as brief) or **under-scrutiny** (audit as subject — e.g. a prior draft whose claims need verifying)? For under-scrutiny inputs, optionally name **contaminants**: specific figures, conclusions, or framings in the file that must NOT propagate into the research (salary anchors, prior conclusions, vendor preferences, a pre-committed answer).
+> 5. Confidentiality: does this research involve confidential material (internal architecture, client code, business-sensitive context), or is it non-confidential/public? This determines how the decorrelated research lane is routed in Phase 2 — web UI, Western-hosted API, or self-host (see Step 2.2).
+> 6. Agent access: which of these do you hold, and at what tier? Perplexity / Gemini / Grok / ChatGPT / Claude / a DeepSeek route (web UI, Western-hosted API, or self-host) / NotebookLM / Elicit / Consensus.
+> 7. Ground truth (optional): any claims you have personally verified and assert as established fact for this research. Each needs three things: the claim, its **metric definition** (what exactly the figure measures — a rank change is not a volume change), and its **source URL**. Each is re-verified at Step 0.6 before it gains any authority."
 
 If a requirements file is mentioned, store the path for Step 0.5. Record the confidentiality answer — it is written to `00-context.md` and consumed at Step 2.2.
+
+Before asking question 6, read the `## Agent access` section of `research-config.md` (the Step 0.0 file): the inventory is a property of the **workspace**, not the project, so ask only about lanes not yet recorded there and write new answers back so the question is never repeated. Phase 1 assigns lanes against this real inventory (Step 1.2), not an assumed default stack. Record input classifications, contaminants, and ground-truth claims in `00-context.md` (Step 0.4 template).
 
 #### Step 0.4 — Generate topic slug and create dossier folder
 
@@ -166,6 +177,18 @@ Create an empty `00-context.md` there (other files are created as phases complet
 ## Existing inputs
 <one bullet per input file path; if there are no inputs, write exactly: none>
 
+## Input trust
+<one line per input: path — trusted | under-scrutiny; contaminants: list, or none. If no inputs, write exactly: n/a>
+
+## Agent access
+<one line per lane: agent: tier / route / none — mirrored from research-config.md>
+
+## Deliberation mode(s)
+<none / debate / red-team / debate+red-team / first-principles — set at Step 0.1 when overlay 13 is active; otherwise n/a>
+
+## Ground-truth claims
+<one line per claim: GT<n> | statement | metric definition | source URL | tag (filled at Step 0.6). If none, write exactly: none>
+
 ## Brownfield repo (if applicable)
 <repo path; if not applicable, write exactly: n/a>
 
@@ -189,6 +212,19 @@ If GREEN: append `requirements_audit: GREEN` to `00-context.md`. Continue.
 If AMBER and user chooses to proceed: append the audit + user's decision to `00-context.md`. Phase 1 will pick up the gaps as sub-questions. Continue.
 
 If RED or AMBER (fix-first): pause. Output the fix prompt with explicit instructions: *"Run this in Claude Code inside your repo. When complete, re-invoke me with: 'Resume research on `<topic-slug>`.'"*
+
+#### Step 0.6 — Ground-truth verification (only when Step 0.3 recorded ground-truth claims)
+
+Operator-supplied ground truth is the only assertion in this pipeline that downstream agents are told not to overturn — so it must be **verified, not merely asserted**, before it gains that authority. An unverified figure seeded into every lane is immune to correction by construction; catching exactly that class of error is the pipeline's purpose. For each claim under `## Ground-truth claims`:
+
+1. Open the claim's source URL exactly as Phase 4 verifies citations — via Firecrawl MCP or web fetch if available on this surface; otherwise ask the user to open it in a browser and report what the page says.
+2. Confirm BOTH the claim and its **metric definition** against the page — the operator's definition, not a lookalike metric. A rank change is not a volume change; a country figure is not a region figure.
+3. Tag the claim in `00-context.md`:
+   - Confirmed → `[GROUND-TRUTH-VERIFIED]` — re-checked this session. **Only this tag carries override authority** in Phases 2–5.
+   - Source unreachable, ambiguous, or in disagreement → surface the discrepancy for adjudication NOW, before Phase 1: *"You stated X; the source says Y — which do we carry, and under which tag?"* Record the decision. Anything unresolved or unverifiable is downgraded to `[GROUND-TRUTH-ASSERTED]` — a strong prior that agents may contradict, but only with a cited primary source.
+4. Do not proceed to Phase 1 while any ground-truth claim is untagged.
+
+With no ground-truth claims recorded, skip this step silently.
 
 ### Phase 1 — Decomposition
 
@@ -216,7 +252,10 @@ Compose the full Phase 1 prompt:
 2. Use-case-specific addition from the overlay
 3. Brownfield context (if applicable): "The user is researching changes to an existing repo at <path>. Existing relevant context: <summarised from README/docs>. Sub-questions must include 'what existing-system constraints apply' and 'what migration risks must be addressed'."
 4. Requirements-file context (if applicable): "The attached file is the prior requirements draft. Sub-questions must include verification of every external claim, technology recommendation, and architectural choice in that draft. Also surface what's missing, what constraints haven't been considered, and what alternatives weren't evaluated."
-5. **NEW (Phase 1 upgrade): customised Phase 2 prompts**: Add to the JSON output spec the requirement to also output `phase_2_prompts` — an array of `{sub_question_id, agent, ready_to_paste_prompt}` where each prompt is fully formed (no placeholders) and ready to copy directly into the assigned agent's interface in Phase 2. The agent set includes the DeepSeek decorrelated lane; for confidential work its route changes (Western-hosted API or self-host) rather than the lane being dropped, and it is omitted only when no compliant route is available (Step 0.3 / Step 2.2).
+5. **Phase 1 output spec**: use the canonical JSON spec (schema_version 2) from `01-prompts-library.md`'s decomposition prompt verbatim. Key contracts: `phase_2_prompts` is the **canonical** statement of who researches what (each prompt fully formed, zero placeholders); `agent_assignments` is derived from it and must agree exactly; `lane_roles` declares every lane's role, lineage, and execution surface; `lanes_unavailable` records useful lanes skipped for access reasons. The agent set includes the DeepSeek decorrelated lane; for confidential work its route changes (Western-hosted API or self-host) rather than the lane being dropped, and it is omitted only when no compliant route is available (Step 0.3 / Step 2.2).
+6. **Agent-access inventory + assignment rule**: paste the `## Agent access` inventory from `00-context.md` into the prompt, with the rule stated: *assign against this real stack, never an assumed one; maximise distinct training lineages before adding depth within a lineage; justify in one line any available lineage left unused.*
+7. **Input classification (if inputs exist)**: state each input's trusted / under-scrutiny classification and its contaminants. Require one `input_audits` block per under-scrutiny input, and state the two-tier rule: *the audit block must be able to name any contaminant it reports; no `ready_to_paste_prompt` may carry one.*
+8. **Ground truth (if claims exist)**: require every `ready_to_paste_prompt` to embed the ground-truth block from `01-prompts-library.md`, with each claim's tag exactly as recorded at Step 0.6.
 
 #### Step 1.3 — Execute Phase 1
 
@@ -226,24 +265,50 @@ If user chose option 2: send the prompt to the local Claude model. Capture JSON 
 
 #### Step 1.4 — Save Phase 1 output
 
-Save the JSON to `<dossier-root>/<topic-slug>/01-decomposition.md`. Update `00-context.md` status: "Phase 1 complete."
+Save the JSON to `<dossier-root>/<topic-slug>/01-decomposition.md`, then hand off to Step 1.5. Do not mark Phase 1 complete until the gate passes.
+
+#### Step 1.5 — Phase 1 output validation gate (BLOCKING)
+
+Phase 1 is the pipeline's single point of failure — its output generates every downstream agent prompt — and that output is far too large to check by eye. Run the gate script (resolve `./scripts/` against this skill's own folder):
+
+```
+python ./scripts/validate_phase1.py <dossier-root>/<topic-slug>/01-decomposition.md
+```
+
+(`python3` on POSIX surfaces where `python` is absent.) The script prints a pass/fail matrix — gates G1–G8, per lane — and exits non-zero on any failure.
+
+- **Exit 0:** append the matrix summary and `phase1_gate: PASS (script)` to `00-context.md`. Continue.
+- **Exit 1:** surface the full matrix and detail lines. **Phase 2 must not begin while any gate is failing.** Offer: (a) re-run Phase 1 with the failure list appended to the prompt, or (b) the user hand-fixes `01-decomposition.md` for trivial mechanical issues. Re-run the gate until it passes; record each attempt in `00-context.md`.
+- **Exit 2:** the file is not parseable JSON — treat as a Phase 1 failure (route (a) above), never as a pass.
+- **Script cannot run** (no Python, or `./scripts/` missing): say so explicitly — *"The Phase 1 gate script cannot run on this surface; walking the equivalent manual checklist instead"* — then work through the checklist below item by item as a blocking gate and record `phase1_gate: PASS|FAIL (manual)` with per-item results. **Never silently skip the gate** — a gate that disappears on some surfaces is worse than no gate, because the user believes it ran.
+
+**Manual fallback checklist (mirrors gates G1–G8):**
+
+1. JSON parses; all spec keys present; 4–8 sub-questions with `SQ<n>` ids; every cross-reference between blocks resolves.
+2. Every sub-question has a non-empty `verdict_forced` and `falsifiable: true`.
+3. Every (sub-question, agent) pair implied by `agent_assignments` (primary and non-null secondary) has exactly one prompt in `phase_2_prompts`, and no prompt lacks an assignment.
+4. Every lane used is declared in `lane_roles` with valid role/lineage/surface, and every sub-question has ≥2 lanes whose role is `evidence` or `decorrelated`.
+5. Read every `ready_to_paste_prompt` end-to-end: no `<TOKEN>`, `{TOKEN}`, `«TOKEN»`, `TODO`, `TBD`, `[INSERT`; deferred prompts carry exactly their declared placeholders, no more, no fewer.
+6. Every prompt contains the [HIGH]/[MEDIUM]/[LOW] rule, the live-URL rule, the primary-sources bar, the coverage-gaps section, and the ground-truth block when claims exist.
+7. Search each contaminant string: permitted only inside `input_audits`; found in any prompt → FAIL.
+8. Every ground-truth claim has a statement, metric definition, status, and https source URL.
+
+**Then the decomposition-gaps review (cognitive — the script cannot do this):** compare the sub-questions against the user's stated circumstances in `00-context.md` — decision context, constraints, jurisdiction or employment specifics, inputs. List every material factor no sub-question covers as `decomposition_gaps`, and surface it: add sub-questions now, or record the user's explicit acceptance of each gap. (The class of miss this catches, from a live run: an employment decision whose sub-questions never asked about the contract-versus-permanent split that changed which options were reachable.)
+
+Update `00-context.md` status: "Phase 1 complete (gate passed)."
 
 ### Phase 2 — Parallel fan-out (preparation only — execution is manual by user)
 
 #### Step 2.1 — Surface the customised Phase 2 prompts
 
-Read `01-decomposition.md`. Extract the `phase_2_prompts` array. Write each prompt to a per-agent file:
+Read `01-decomposition.md`. Extract the canonical `phase_2_prompts` array, group by `lane_id` (from `lane_roles`), and write one staged-prompt file per lane:
 
 ```
 <dossier-root>/<topic-slug>/
-  02a-prompts-perplexity.md    # all sub-questions assigned to Perplexity, prompts ready to paste
-  02a-prompts-gemini.md        # same for Gemini
-  02a-prompts-grok.md          # same for Grok
-  02a-prompts-claude.md        # same for Claude.ai web search
-  02a-prompts-deepseek.md      # decorrelated lane — omit if skipped per Step 2.2
-  02a-prompts-chatgpt.md       # optional sixth lane — only if Phase 1 assigned it
-  02a-prompts-notebooklm.md    # if NotebookLM assigned
+  02a-prompts-<lane_id>.md     # all prompts for that lane, ready to paste
 ```
+
+Each lane's output is later saved back as `02-<lane_id>.md`. The **standard lane set** — the filenames when `lane_roles` matches the default stack — is `02a-prompts-perplexity.md`, `02a-prompts-gemini.md`, `02a-prompts-grok.md`, `02a-prompts-claude.md`, `02a-prompts-deepseek.md` (decorrelated lane — omit only if skipped per Step 2.2), plus `02a-prompts-chatgpt.md` and `02a-prompts-notebooklm.md` when assigned. Project-specific lanes (a SERP analysis, a live job-board scan — see runbook 11, "Specialist lanes") use the same convention under their declared `lane_id`.
 
 #### Step 2.2 — Instruct the user
 
@@ -257,7 +322,7 @@ Read `01-decomposition.md`. Extract the `phase_2_prompts` array. Write each prom
 
 The choice is about the **route**, not whether to run the lane; skipping is the last resort, not the default for confidential work.
 
-Output (with the DeepSeek lines and the five/four counts matching the decision):
+Then render the fan-out instructions **from `lane_roles`** — one entry per lane, driven by its `execution_surface` — rather than from a fixed tab list. For the standard stack the rendering is the block below (with the DeepSeek lines and the five/four counts matching the decision):
 
 > "Phase 2 prompts are saved per-agent. Open five browser tabs side-by-side:
 >
@@ -282,28 +347,65 @@ If NotebookLM is included for this project (brownfield, ebook with private corpu
 
 > "Additionally for NotebookLM: upload the relevant private corpus to a NotebookLM notebook, then run the prompt from `02a-prompts-notebooklm.md`. Save output as `02-notebooklm.md`."
 
-If Phase 1 assigned **ChatGPT** as the optional sixth lane (per the master methodology's agent inventory — useful for enterprise/regulated-industry contrast):
+If Phase 1 assigned **ChatGPT** (per the Step 0.3 inventory — the only OpenAI-lineage lane; the assignment rule expects it whenever the operator holds it):
 
 > "Additionally open **ChatGPT** (Deep Research): paste contents of `02a-prompts-chatgpt.md`. Submit. Save output as `02-chatgpt.md`."
 
+For any lane outside the standard set, render its instruction from its declared `execution_surface`:
+
+- **A named product** — "Open <product> (<mode>): paste contents of `02a-prompts-<lane_id>.md`. Submit. Save output as `02-<lane_id>.md`."
+- **`browser-agent`** — the prompt runs through a browser-driving agent; name the tool the user has, or ask which they want to use.
+- **`orchestrator-local`** — this session runs the lane itself via its own fetch/search tooling and writes `02-<lane_id>.md` directly. Acceptable **only** for empirical/counting lanes (see runbook 11, "Specialist lanes" — lineage decorrelation matters less when a lane counts rather than reasons); never for synthesis lanes. Note the lineage overlap in the output header so Phase 3 can discount same-lineage concurrence.
+- **`manual`** — the user gathers this by hand; state exactly what to collect and where to save it.
+
+A lane never ships as a role without a surface: if a staged prompt exists and its lane has no runnable surface, stop and resolve it with the user rather than leaving them holding a prompt with nowhere to paste it.
+
 Pause.
+
+### Phase 2.5 — Debate pass (conditional)
+
+#### Step 2.5 — Debate (BLOCKING when overlay 13 selected Debate)
+
+Runs only when `00-context.md` records `debate` (overlay 13, Mode 2), alone or as `debate+red-team`. A selected mode is mandatory (overlay contract); cancelling one requires the user's explicit decision, logged in `00-context.md`.
+
+1. Read overlay 13, "Mode 2 — Debate". Build one prompt per participating lane from its ready-to-paste template: FOR to roughly half the lanes, AGAINST to the rest — and **the decorrelated lane always participates** (overlay 13's hard constraint: debate among same-lineage models amplifies shared bias instead of correcting it). If the decorrelated lane was skipped at Step 2.2, stop and surface it: the user must restore the lane or explicitly cancel the mode.
+2. Stage per-lane files mirroring Step 2.1: `02b-prompts-debate-<lane_id>.md`.
+3. Instruct the user to run them on the same surfaces as Phase 2 and save outputs as `02b-debate-<lane_id>.md`. Pause.
+4. On resume, Step 3.1's gate covers the `02b-debate-*` files too. Debate outputs join Phase 3 as additional inputs; per overlay 13, judge **argument quality, not vote count**.
 
 ### Phase 3 — Cross-examination
 
-#### Step 3.1 — Verify Phase 2 outputs are saved (sanity check with quality gates)
+#### Step 3.1 — Phase 2 output gate (BLOCKING)
 
-When the user resumes, check that a `02-<agent>.md` file exists and is non-empty for every agent that ran — five, or four if the decorrelated lane was skipped per `00-context.md` (plus NotebookLM and/or the optional ChatGPT sixth lane if assigned). If any are missing or empty, ask the user.
+When the user resumes, check that a `02-<lane_id>.md` file exists and is non-empty for every lane in `lane_roles` that ran (plus `02b-debate-<lane_id>.md` files when the Debate pass ran). If any are missing or empty, ask the user.
 
-Then run two quality gates on each agent file:
+Then run the gate script over the dossier folder:
 
-1. **Live-URL paste-check.** Spot-open 3 citations per agent file — via Firecrawl MCP or web fetch if available on this surface; otherwise ask the user to open them in a browser and report. If the citations are dead links, bare reference markers, footnote numbers, or tool-internal citation tokens rather than live resolvable URLs, the file FAILS: the user must re-export or re-run that agent before Phase 3 proceeds.
-2. **Confidence-tag check.** Every finding must carry a [HIGH]/[MEDIUM]/[LOW] confidence tag. A file with untagged findings FAILS: re-run that agent with the tagging requirement restated from `./references/01-prompts-library.md`.
+```
+python ./scripts/gate_phase2.py <dossier-root>/<topic-slug>
+```
 
-Do not proceed to Phase 3 while any file is in a failed state. Record gate results in `00-context.md`.
+The script splits every lane file into echoed-prompt and answer — reporting which method it used (sentinel, prompt-tail, or whole-file) — and computes ALL metrics on the answer only, because an echoed prompt satisfies every substring check by itself. It checks: six-section structure with non-trivial content under each heading; per-finding confidence tags (escaped `\[HIGH\]` counts after normalisation); the citation census, where `[n]`, `[^n]`, and `【n†…】` are dead markers rather than citations and hidden-span reference blocks are concealment; the URL-to-findings ratio; and a claims-vs-delivery check — an output asserting sections the structural check cannot find fails on that alone.
+
+- **Any lane FAILS:** that lane must be re-exported or re-run before Phase 3. **Do not proceed with any lane in a failed state.** Surface the per-lane matrix with the specific failure lines.
+- **All lanes pass:** additionally run the **live-URL spot-check** — the script verifies URL presence and shape, not that pages actually resolve. Spot-open 3 citations per lane via Firecrawl MCP or web fetch if available on this surface; otherwise ask the user to open them in a browser and report. Dead links fail the lane.
+- **Script cannot run:** say so explicitly and walk the manual checklist below per lane as a blocking gate. Never silently skip.
+
+Record results in `00-context.md` as `phase2_gate: <lane>=PASS|FAIL … (script|manual)`.
+
+**Manual fallback checklist (mirrors checks C1–C7):**
+
+1. Find the last standalone `===BEGIN LANE OUTPUT===` line (or, failing that, the last occurrence of the staged prompt's final line); everything before it is echo — judge ONLY what follows. If the prompt is echoed and no boundary can be found, FAIL and re-export.
+2. All six sections present after the boundary, each with real content (Findings ≥3 numbered items; Sources ≥3 URLs).
+3. Every numbered finding tagged [HIGH]/[MEDIUM]/[LOW] — escaped `\[HIGH\]` counts.
+4. Count live `https://` URLs in the answer: ≥3 distinct, at least one per two findings, and more URLs than bare `[n]`/`[^n]`/`【n†…】` markers.
+5. Inspect the raw text for hidden `<span style="display:none">` blocks holding references — concealment is a FAIL.
+6. If the output *claims* a section you cannot find structurally, FAIL.
+7. Note roughly what fraction of the file is echoed prompt.
 
 #### Step 3.2 — Build Phase 3 prompt
 
-Use the contradiction-matrix prompt from `./references/01-prompts-library.md`. Inline the contents of all `02-*.md` files into the prompt's `<*_output>` blocks.
+Use the contradiction-matrix prompt from `./references/01-prompts-library.md`. Inline one `<lane_id>_output` block per lane that ran (the six shown in the template are the standard set), plus one `<lane_id>_debate_output` block per lane when the Debate pass ran. When overlay 13 is active, include the prompt's conditional section 6 (DCI TALLY).
 
 #### Step 3.3 — Determine where Phase 3 runs
 
@@ -340,7 +442,16 @@ Surface the top 5 most load-bearing citations to the user with instruction: *"Op
 
 For health content specifically: also instruct the user to run RCT/meta-analysis citations through Scite (https://scite.ai) to check whether later papers contradicted the cited finding.
 
-#### Step 4.5 — Save outputs
+#### Step 4.5 — Red Team pass (Phase 4.5 — BLOCKING when overlay 13 selected Red Team)
+
+Runs only when `00-context.md` records `red-team` (overlay 13, Mode 1). Mandatory when selected (overlay contract). The flow is Debate → Red Team → Decision: this pass attacks the draft recommendation that has emerged from Phases 2–4, before the Chairman consolidates it.
+
+1. Write the one-paragraph **draft recommendation under attack** — from `03-conflict-map.md` and the surviving sources — with its key assumptions stated explicitly. Confirm it with the user.
+2. Build one prompt per participating lane from overlay 13, "Mode 1 — Red Team", assigning each lane 1–2 of the six attack vectors; the decorrelated lane is mandatory here. If Phase 1 staged these as `deferred_phase_prompts`, they may carry the declared placeholder `<DRAFT_RECOMMENDATION>` until this step fills it — the only sanctioned deferred token, and it must be filled before hand-off.
+3. Stage `04a-prompts-redteam-<lane_id>.md`; the user runs them on the same surfaces as Phase 2 and saves outputs as `04a-redteam-<lane_id>.md`. Pause.
+4. On resume: sort findings KILL > MAJOR > MANAGEABLE; explicitly flag the findings the user had not considered — those are the real blind spots. Carry all `04a-redteam-*` files into Phase 5, where the Decision Brief's UNRESOLVED DISAGREEMENTS, UNCONTESTED RISKS, and CORRECTION LEDGER sections consume them.
+
+#### Step 4.6 — Save outputs
 
 Save to:
 - `<dossier-root>/<topic-slug>/04-verified-sources.md` — citations that survived
@@ -348,11 +459,23 @@ Save to:
 
 Update `00-context.md`.
 
-Optionally, before Phase 5: run the methodology's Phase 4.5 eval gate (a 5–10 question golden-set regression — see `./references/00-master-methodology.md`, Decision rules) as calibration; skip freely for low-stakes dossiers.
+Optionally, before Phase 5: run the methodology's eval gate (a 5–10 question golden-set regression — see `./references/00-master-methodology.md`, Decision rules) as calibration. It shares the methodology's Phase 4.5 slot with the Red Team pass but is independent of it — calibration, not adversarial review; skip freely for low-stakes dossiers.
 
 ### Phase 5 — Consolidation (Chairman synthesis)
 
-**Phase 5 always runs in Claude.ai web with the strongest available Claude model, extended thinking at maximum.** This is non-negotiable for the quality bar.
+**Phase 5 is gated on capability, not venue.** The Chairman needs three things at once:
+
+1. the **strongest available Claude model**;
+2. **extended thinking at maximum**;
+3. a **fresh context** holding the full input set — and nothing else.
+
+The third is an independence requirement, not a convenience: an orchestrator that has run Phases 0–4 has formed views about the answer — it has seen the conflicts, judged the gates, perhaps corrected ground truth. A Chairman inheriting that context synthesises from its own priors instead of deriving from the inputs, and can import claims that exist only in the conversation and in no `02-*.md` — violating its own rule against introducing claims absent from the inputs. This is the same independence principle the decorrelated lane enforces at Phase 2, applied to the synthesis seat.
+
+**Pre-Phase-5 input-budget check (always, before choosing a route):** sum the byte sizes of the full input set — all `02-*.md`; `02b-debate-*.md` if Debate ran; `03-conflict-map.md`; `04-verified-sources.md`; `04-rejected.md`; `04a-redteam-*.md` if Red Team ran; the ground-truth section of `00-context.md` — estimate tokens (≈ bytes ÷ 4), and report the figure to the user. Then choose a route, in preference order:
+
+- **(a) A fresh subagent** on the strongest available Claude model, launched with only the Chairman prompt + inputs and no orchestration history — preferred wherever the surface supports subagents and the inputs fit. Same independence as a fresh chat, no manual copy-paste hop (every manual transfer is a place an artifact can be silently truncated — a failure observed live), and the output lands in the dossier folder directly.
+- **(b) A fresh Claude.ai web chat** — the Step 5.2 hand-off. The default when (a) is unavailable.
+- **(c) This session inline — permitted only if BOTH hold:** few phases actually ran in this context (low contamination), AND the budget check shows the input set demonstrably fits the remaining window. State both conditions to the user before proceeding.
 
 #### Step 5.1 — Build the Chairman prompt
 
@@ -362,20 +485,24 @@ Read from `./references/`:
 
 Compose the full Chairman prompt:
 1. Role + rules from the universal Chairman template
-2. Inputs: paste contents of all `02-*.md`, `03-conflict-map.md`, `04-verified-sources.md`, `04-rejected.md`
+2. Inputs: paste contents of all `02-*.md`, `03-conflict-map.md`, `04-verified-sources.md`, `04-rejected.md` — plus `02b-debate-*.md` and `04a-redteam-*.md` when those passes ran, and the ground-truth block (with tag semantics) when claims exist
 3. Output format block from the use-case overlay — for decision research (use case 8), or when overlay 13 is layered, this is the Decision Brief format from `./references/13-overlay-deliberation-modes.md`
 
-If the prompt is very large (>100K tokens of inputs), consider chunking — but for most projects, paste directly.
+Sizing comes from the input-budget check above; if the set exceeds the chosen route's window, chunk by sub-question rather than by agent, and surface that to the user first.
 
-#### Step 5.2 — Hand off to Claude.ai web
+#### Step 5.2 — Hand off to the fresh-context Chairman
 
-Output the full prompt + instruction:
+**Route (a) — fresh subagent:** launch it with the composed Chairman prompt as its entire task, no orchestration history. Save its output to `<dossier-root>/<topic-slug>/05-dossier.md` directly.
+
+**Route (b) — fresh Claude.ai web chat:** output the full prompt + instruction:
 
 > "Open a fresh Claude.ai chat in your research project. Set extended thinking to maximum effort. Paste the prompt below. The output is your final dossier.
 >
 > When the dossier is ready, save it back to `<dossier-root>/<topic-slug>/05-dossier.md` and tell me 'Phase 5 complete.'"
 
 Pause.
+
+**Route (c) — inline:** restate the two conditions and the token estimate, then run the Chairman prompt in this session and save `05-dossier.md`.
 
 #### Step 5.3 — Optional CoVe self-check
 
@@ -456,7 +583,7 @@ If the following are available, use them:
 | Tool | Used in | How |
 |---|---|---|
 | `research-requirements-check` skill | Phase 0.5 | Auto-invoke when requirements file present |
-| Firecrawl MCP | Phase 3.1, 4.2 | Programmatic URL verification |
+| Firecrawl MCP | Steps 0.6, 3.1, 4.2 | Ground-truth verification + programmatic URL verification |
 | GitHub MCP | Phase 6.1 (spec-dev) | Commit dossier, open PR |
 | Context7 MCP | Phase 5 (optional) | Fresh vendor doc verification during Chairman synthesis |
 | Memory MCP | Across phases | Persist context between Cowork sessions if conversation spans days |
@@ -472,6 +599,7 @@ If the following are available, use them:
 5. **Phase 5 inputs exceed context window** — chunk by sub-question rather than by agent. Surface to user before attempting.
 6. **User runs the orchestrator in a project type not covered by overlays 02-08 and 13** — ask if they want to adapt the closest overlay or stop and define a new overlay.
 7. **`research-config.md` deleted or moved mid-project** — re-run Step 0.0 to re-resolve the dossier root; do not assume the previous root still applies.
+8. **An active overlay declares a mandatory mechanism with no wired step** — halt and surface it (see the overlay contract). Silent skipping is a defect: a control that appears to exist but never runs is worse than a missing one, because nobody notices it's gone.
 
 ---
 

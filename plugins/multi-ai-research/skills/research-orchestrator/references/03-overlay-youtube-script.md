@@ -1,6 +1,7 @@
 # Overlay — YouTube Scripts (Agentic Coding / Engineering Content)
 
 **Reads with:** `00-master-methodology.md` and `01-prompts-library.md`
+**Superseded-by:** `08-overlay-deck-and-screencast.md` — for this overlay's Phase-6 section whenever a slide deck is also produced (see the v1.1 note below)
 
 ---
 

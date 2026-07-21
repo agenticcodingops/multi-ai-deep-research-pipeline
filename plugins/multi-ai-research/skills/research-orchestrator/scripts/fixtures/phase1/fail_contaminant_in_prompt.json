@@ -1,0 +1,224 @@
+{
+  "schema_version": 2,
+  "sub_questions": [
+    {
+      "id": "SQ1",
+      "question": "Which static site generator best handles large image galleries for a hobby photography blog?",
+      "verdict_forced": "Name a single generator and defend the choice.",
+      "falsifiable": true
+    },
+    {
+      "id": "SQ2",
+      "question": "How do build times compare once the photo library grows past one thousand images?",
+      "verdict_forced": "State which generator builds fastest at that scale.",
+      "falsifiable": true
+    },
+    {
+      "id": "SQ3",
+      "question": "Which generator has the strongest ecosystem of photography portfolio themes?",
+      "verdict_forced": "Name the generator with the strongest theme ecosystem.",
+      "falsifiable": true
+    },
+    {
+      "id": "SQ4",
+      "question": "What is community sentiment on the long-term maintenance outlook of the leading candidates?",
+      "verdict_forced": "State which project shows the healthiest maintenance outlook.",
+      "falsifiable": true
+    }
+  ],
+  "agent_assignments": [
+    {
+      "sub_question_id": "SQ1",
+      "primary_agent": "Perplexity",
+      "secondary_agent": "Gemini",
+      "source_type_required": "official documentation and reproducible benchmarks"
+    },
+    {
+      "sub_question_id": "SQ1",
+      "primary_agent": "Claude",
+      "secondary_agent": null,
+      "source_type_required": "synthesis of the other lane outputs"
+    },
+    {
+      "sub_question_id": "SQ2",
+      "primary_agent": "Gemini",
+      "secondary_agent": "DeepSeek",
+      "source_type_required": "reproducible build benchmarks"
+    },
+    {
+      "sub_question_id": "SQ3",
+      "primary_agent": "Perplexity",
+      "secondary_agent": "DeepSeek",
+      "source_type_required": "theme registries and primary documentation"
+    },
+    {
+      "sub_question_id": "SQ4",
+      "primary_agent": "Grok",
+      "secondary_agent": "Perplexity",
+      "source_type_required": "community forums and maintainer changelogs"
+    },
+    {
+      "sub_question_id": "SQ4",
+      "primary_agent": "Gemini",
+      "secondary_agent": null,
+      "source_type_required": "maintainer changelogs"
+    }
+  ],
+  "lane_roles": [
+    {
+      "lane_id": "perplexity",
+      "agent": "Perplexity",
+      "role": "evidence",
+      "lineage": "mixed",
+      "execution_surface": "Perplexity Pro web"
+    },
+    {
+      "lane_id": "gemini",
+      "agent": "Gemini",
+      "role": "evidence",
+      "lineage": "Google",
+      "execution_surface": "Gemini Advanced web"
+    },
+    {
+      "lane_id": "grok",
+      "agent": "Grok",
+      "role": "sentiment",
+      "lineage": "xAI",
+      "execution_surface": "Grok web"
+    },
+    {
+      "lane_id": "claude",
+      "agent": "Claude",
+      "role": "synthesis",
+      "lineage": "Anthropic",
+      "execution_surface": "browser-agent"
+    },
+    {
+      "lane_id": "deepseek",
+      "agent": "DeepSeek",
+      "role": "decorrelated",
+      "lineage": "decorrelated",
+      "execution_surface": "manual"
+    }
+  ],
+  "phase_2_prompts": [
+    {
+      "sub_question_id": "SQ1",
+      "agent": "Perplexity",
+      "lane_id": "perplexity",
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ1",
+      "agent": "Gemini",
+      "lane_id": "gemini",
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ1",
+      "agent": "Claude",
+      "lane_id": "claude",
+      "ready_to_paste_prompt": "You are the Claude lane (synthesis role) researching the best static site generator for a hobby photography blog. Sub-question SQ1: Which static site generator best handles large image galleries for a hobby photography blog? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ2",
+      "agent": "Gemini",
+      "lane_id": "gemini",
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify. Note that the vendor packet asserts: HugoMax whitepaper claims 10x faster builds."
+    },
+    {
+      "sub_question_id": "SQ2",
+      "agent": "DeepSeek",
+      "lane_id": "deepseek",
+      "ready_to_paste_prompt": "You are the DeepSeek lane (decorrelated role) researching the best static site generator for a hobby photography blog. Sub-question SQ2: How do build times compare once the photo library grows past one thousand images? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ3",
+      "agent": "Perplexity",
+      "lane_id": "perplexity",
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ3",
+      "agent": "DeepSeek",
+      "lane_id": "deepseek",
+      "ready_to_paste_prompt": "You are the DeepSeek lane (decorrelated role) researching the best static site generator for a hobby photography blog. Sub-question SQ3: Which generator has the strongest ecosystem of photography portfolio themes? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ4",
+      "agent": "Grok",
+      "lane_id": "grok",
+      "ready_to_paste_prompt": "You are the Grok lane (sentiment role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ4",
+      "agent": "Perplexity",
+      "lane_id": "perplexity",
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    },
+    {
+      "sub_question_id": "SQ4",
+      "agent": "Gemini",
+      "lane_id": "gemini",
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching the best static site generator for a hobby photography blog. Sub-question SQ4: What is community sentiment on the long-term maintenance outlook of the leading candidates? Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence. Cite every factual claim with a LIVE, resolvable URL and prioritise primary sources over aggregators. Cross-check the ground truth register (claim GT1) before drafting. Close with a Coverage gaps list naming anything you could not verify."
+    }
+  ],
+  "lanes_unavailable": [],
+  "inputs": [
+    {
+      "input_id": "IN1",
+      "name": "Personal comparison notes",
+      "classification": "trusted",
+      "contaminants": []
+    },
+    {
+      "input_id": "IN2",
+      "name": "Vendor marketing packet",
+      "classification": "under_scrutiny",
+      "contaminants": [
+        "HugoMax whitepaper claims 10x faster builds"
+      ]
+    }
+  ],
+  "input_audits": {
+    "IN1": {
+      "summary": "Hand-written notes comparing three generators; no vendor language detected.",
+      "disposition": "usable"
+    },
+    "IN2": {
+      "summary": "The packet repeats the line 'HugoMax whitepaper claims 10x faster builds' with no benchmark data attached; the claim is quarantined until an independent measurement exists.",
+      "disposition": "quarantined"
+    }
+  },
+  "ground_truth": [
+    {
+      "claim_id": "GT1",
+      "statement": "A five-hundred-image reference gallery builds from cold in under one minute on a mid-range laptop with the leading generator.",
+      "metric_definition": "Median wall-clock time of three cold full builds of the reference gallery on the benchmark laptop.",
+      "status": "verified",
+      "source_url": "https://example.org/benchmarks/gallery-build"
+    }
+  ],
+  "deferred_phase_prompts": [
+    {
+      "phase": 5,
+      "purpose": "Adversarial review of the draft recommendation",
+      "prompt_template": "Challenge the following draft verdict: <DRAFT_RECOMMENDATION>. List the three strongest objections, tag each [HIGH], [MEDIUM], or [LOW], and cite a LIVE, resolvable URL for every objection.",
+      "declared_placeholders": [
+        "<DRAFT_RECOMMENDATION>"
+      ]
+    }
+  ],
+  "disqualifying_sources": [
+    "Content farms with no named author or dateline",
+    "Vendor marketing pages that cite no reproducible benchmark"
+  ],
+  "success_criteria": [
+    "One recommended generator supported by at least two independent evidence lanes",
+    "Every [HIGH] claim traceable to a primary source with a resolvable URL"
+  ],
+  "known_traps": [
+    "Confusing hosted-platform rendering speed with local build speed",
+    "Judging theme quality from screenshots rather than a default install"
+  ]
+}

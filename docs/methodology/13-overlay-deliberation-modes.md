@@ -1,6 +1,7 @@
 # Overlay — Deliberation Modes (decision pressure-testing)
 
 **New in v1.1 (2026-06-01).** **Reads with:** `00-master-methodology.md` and `01-prompts-library.md`.
+**Supersedes:** the pre-v1.1 routing of personal/decision research (use case 8) through `06-overlay-wordpress-seo.md` (runbook 11, lesson 8).
 **Origin:** patterns adapted from Suprmind's orchestration modes + Adjudicator (studied as *patterns*, not endorsed as a product — its self-published benchmarks remain vendor content per Phase-4 hygiene). Reimplemented as manual prompt templates for our existing fan-out.
 
 > **Numbering note:** originally drafted as `09-`, which collided with `09-cowork-skills-setup.md`; renamed to `13-overlay-deliberation-modes.md` on merge for a clean sequence.
@@ -9,7 +10,7 @@
 
 ## When to use this overlay
 
-Apply on top of the normal pipeline when the dossier supports a **decision** (go/no-go, build/buy, strategy, launch, investment) rather than a pure write-up. These modes are *additional Phase-2/Phase-3 passes*, not replacements. They pair naturally with the WordPress/YouTube overlays when the content itself is a decision piece.
+Apply on top of the normal pipeline when the dossier supports a **decision** (go/no-go, build/buy, strategy, launch, investment) rather than a pure write-up. These modes are *additional between-phase passes*, not replacements: Debate runs at **Phase 2.5** (between fan-out and the contradiction matrix), Red Team at **Phase 4.5** (between citation verification and the Chairman, sharing that slot with the optional eval gate). They pair naturally with the WordPress/YouTube overlays when the content itself is a decision piece.
 
 **What we already have (do NOT re-import):** Suprmind's *Super Mind* = our Phase-2 fan-out + Phase-3 contradiction matrix + Phase-5 chairman; *Research Symphony* = our full 6-phase pipeline; *Sequential* (each AI reads the prior) is **rejected as a default** — our verified evidence shows sequential hand-offs degrade planning tasks and amplify correlated error (arXiv 2506.07962, 2605.29800; Google scaling synthesis). We fan out in parallel on purpose. *Targeted/@mentions* = our deep/light agent assignment.
 
@@ -35,7 +36,7 @@ The Decision Brief is the **terminal artifact**: it exists to settle the operato
 
 ---
 
-## Mode 1 — Red Team (adversarial stress-test)
+## Mode 1 — Red Team (adversarial stress-test) — runs at Phase 4.5
 
 **Use for:** pre-launch validation, investment/strategy pre-mortems, risk assessment. Run AFTER you have a draft recommendation; the flow is **Debate → Red Team → Decision**.
 
@@ -64,7 +65,7 @@ evidence or reasoning. Cite a live URL where the claim is factual; tag reasoning
 
 ---
 
-## Mode 2 — Debate (decorrelated, position-assigned)
+## Mode 2 — Debate (decorrelated, position-assigned) — runs at Phase 2.5
 
 **Use for:** "should we?" decisions with legitimate trade-offs, thesis stress-testing, confirmation-bias checks.
 **Hard constraint (ours, not Suprmind's):** run debate **only with the decorrelated lane in the room.** Verified evidence shows debate among same-lineage models amplifies shared bias rather than correcting it (Nine Judges, arXiv 2605.29800; correlated errors, 2506.07962). Judge **argument quality, not vote count** — 3 models on one side ≠ correct.
@@ -145,6 +146,8 @@ A lightweight quantitative layer on the Phase-3 contradiction matrix: per round,
 | Convention looks wrong / novel problem | **First Principles** at Phase 1 |
 | High-stakes go/no-go for sign-off | Debate → Red Team → **Decision Brief** output |
 | Quick shareable answer | Normal Super-Mind-equivalent (fan-out + chairman), skip the extra passes |
+
+**A mode selected here is mandatory and blocking, not advisory.** The orchestrator wires Debate to Phase 2.5 (its Step 2.5) and Red Team to Phase 4.5 (its Step 4.5) and may not proceed past those points while a selected mode has not run. Skipping a selected mode is a pipeline defect, not an option; cancelling one requires an explicit operator decision logged in `00-context.md`.
 
 ## Quality bar
 Reject a decision dossier that: resolves a factual dispute without a cited source; "resolves" a strategic dispute by picking the more confident model; lacks an Uncontested-Risks section (the blind-spot catch is the whole point); or ran Debate without the decorrelated lane present.
