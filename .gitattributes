@@ -1,0 +1,6 @@
+# Force LF on checkout for all text files, on every platform. The builder
+# suite byte-compares golden fixtures against generator output (LF), and the
+# answer-sheet digest is recomputed from checked-out bytes — a CRLF checkout
+# (e.g. core.autocrlf=true on Windows) breaks both. Binary files are
+# auto-detected and left untouched.
+* text=auto eol=lf
