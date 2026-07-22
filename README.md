@@ -1,5 +1,7 @@
 # Multi-AI Deep Research Pipeline
 
+[![CI](https://github.com/agenticcodingops/multi-ai-deep-research-pipeline/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/agenticcodingops/multi-ai-deep-research-pipeline/actions/workflows/ci.yml)
+
 A six-phase methodology — packaged as a Claude plugin — for research you can defend: **decompose** a question into sub-questions that demand verdicts, **fan out** to five independent deep-research AI lanes in parallel, build a **contradiction matrix** from their answers, **verify** every load-bearing citation, have a Chairman model **synthesise** a dossier under strict rules, then **route** that one dossier into whatever deliverables you need.
 
 The design premise: models that agree can be wrong together. So the pipeline includes a decorrelated lane from a different training lineage, preserves disagreement instead of averaging it away, and makes every important citation prove itself — the fabricated ones go in a rejected-sources log you keep.

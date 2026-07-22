@@ -1,0 +1,111 @@
+# Neutral validation workflow. This file is exported to the public
+# distribution repo verbatim, so it must stay generic: relative paths only,
+# no machine-, account-, or release-tooling references.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'plugins/**'
+      - 'docs/methodology/**'
+      - '.github/workflows/**'
+      - '.gitattributes'
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - 'docs/methodology/**'
+      - '.github/workflows/**'
+      - '.gitattributes'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      # every OS leg must report independently; one leg's flake must not
+      # cancel the evidence from the others
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Orchestrator suite (phase gate scripts)
+        shell: bash
+        run: python -m unittest discover -s plugins/multi-ai-research/skills/research-orchestrator/scripts -v
+
+      - name: Builder suite (validator, io helper, contract drift, golden loops)
+        shell: bash
+        run: python -m unittest discover -s plugins/multi-ai-research/skills/research-kickoff-builder/scripts -v
+
+      - name: Golden validator CLI (exit 0, result pass)
+        shell: bash
+        run: |
+          WS="$(mktemp -d)"
+          set +e
+          OUT="$(python plugins/multi-ai-research/skills/research-kickoff-builder/scripts/validate_kickoff.py \
+            plugins/multi-ai-research/skills/research-kickoff-builder/scripts/fixtures/kickoff/pass/pass_uc1_spec_dev.md \
+            --workspace-root "$WS" --operation validate --json)"
+          CODE=$?
+          set -e
+          echo "$OUT"
+          if [ "$CODE" -ne 0 ]; then
+            echo "validator exited $CODE, expected 0"
+            exit 1
+          fi
+          echo "$OUT" | grep -F '"result": "pass"'
+
+      - name: Golden validator CLI from a quoted Unicode workspace path
+        shell: bash
+        run: |
+          WS="$(mktemp -d)/it's a — ünïcode workspace"
+          mkdir -p "$WS"
+          OUT="$(python plugins/multi-ai-research/skills/research-kickoff-builder/scripts/validate_kickoff.py \
+            plugins/multi-ai-research/skills/research-kickoff-builder/scripts/fixtures/kickoff/pass/pass_uc1_spec_dev.md \
+            --workspace-root "$WS" --operation validate --json)"
+          echo "$OUT" | grep -F '"result": "pass"'
+
+      - name: Symlink escape test must RUN on Linux (a skip is a failure)
+        if: runner.os == 'Linux'
+        shell: bash
+        working-directory: plugins/multi-ai-research/skills/research-kickoff-builder/scripts
+        run: |
+          LOG="$(mktemp)"
+          python -m unittest -v \
+            test_validate_kickoff.K8PathSafetyTests.test_symlink_escape_detected 2>&1 | tee "$LOG"
+          if grep -q "skipped" "$LOG"; then
+            echo "symlink escape test was SKIPPED on Linux; it must actually run here"
+            exit 1
+          fi
+          grep -Eq "test_symlink_escape_detected .*\.\.\. ok$" "$LOG"
+
+  plugin-validate:
+    name: plugin validate
+    runs-on: ubuntu-latest
+    # bounds any fresh-machine first-run hang from the CLI
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Install Claude Code CLI
+        shell: bash
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate plugin manifest and skills
+        shell: bash
+        run: claude plugin validate plugins/multi-ai-research
