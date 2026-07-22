@@ -1,7 +1,7 @@
 {
   "name": "multi-ai-research",
   "description": "Six-phase multi-AI research pipeline: decomposition, parallel fan-out, contradiction matrix, citation verification, chairman synthesis, output routing.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": { "name": "Syed Hassan Abbas" },
   "homepage": "https://github.com/agenticcodingops/multi-ai-deep-research-pipeline",
   "repository": "https://github.com/agenticcodingops/multi-ai-deep-research-pipeline",

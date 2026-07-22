@@ -42,8 +42,9 @@ Output strict JSON with these keys (this is the canonical Phase 1 output spec, v
   and carrying the COMPLETE Phase 2 contract in its own text: the sentinel instruction
   (the token ===BEGIN LANE OUTPUT=== named inline in a sentence, never on its own line),
   all six output section names, the confidence-tag, live-URL, primary-source and
-  coverage-gaps rules, the literal OUTPUT FORMAT skeleton from the Phase-2 fan-out prompt,
-  and the filled ground-truth block when claims exist. A prompt that
+  coverage-gaps rules, the literal OUTPUT FORMAT skeleton (reproduced at the end of this
+  prompt — copy it into every prompt verbatim), and the filled ground-truth block when
+  claims exist. A prompt that
   merely references the contract will fail the Phase 2 gate when the agent, following only
   what it was pasted, omits the sentinel or the section structure.
 - agent_assignments: array of {sub_question_id, primary_agent, secondary_agent, source_type_required}
@@ -81,6 +82,24 @@ assign against the operator's real agent-access inventory (provided in this prom
 assumed stack. Justify in one line any available lineage left unused. Every sub-question needs
 at least 2 evidence-bearing lanes (role evidence or decorrelated); a sentiment lane may carry
 community-signal sub-questions but never a load-bearing evidence question alone.
+
+The OUTPUT FORMAT skeleton every ready_to_paste_prompt must carry verbatim:
+OUTPUT FORMAT (machine-checked — follow literally):
+===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line
+## TL;DR
+- <verdict bullet — three of these>
+## Findings
+1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence
+2. [MEDIUM] <next finding>. Source: https://example.org/report
+3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data
+## Conflicts and uncertainties
+## What would change your recommendation
+## Sources consulted
+- <at least 3 distinct https URLs, one per line>
+## Coverage gaps
+Headings are plain full lines with nothing after the name. Findings are plain "1." lines —
+at least three of them, no blockquotes, no code fences anywhere in the answer — each with
+its own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL.
 
 Do not answer the questions. Plan only.
 ```

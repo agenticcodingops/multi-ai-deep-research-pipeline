@@ -1,0 +1,179 @@
+{
+  "schema_version": 2,
+  "sub_questions": [
+    {
+      "id": "SQ1",
+      "question": "Which password manager has the strongest security architecture and breach record for family use?",
+      "verdict_forced": "Name a single product and defend the choice with its audit and breach history.",
+      "falsifiable": true
+    },
+    {
+      "id": "SQ2",
+      "question": "How do family-plan prices and seat limits compare across the leading candidates?",
+      "verdict_forced": "State which product offers the best family-plan value at five seats.",
+      "falsifiable": true
+    },
+    {
+      "id": "SQ3",
+      "question": "Which product has the widest cross-platform and browser coverage for a mixed-device household?",
+      "verdict_forced": "Name the product with the fewest platform gaps for a mixed-device family.",
+      "falsifiable": true
+    },
+    {
+      "id": "SQ4",
+      "question": "What is community sentiment on support quality and account-recovery experiences?",
+      "verdict_forced": "State which product shows the healthiest support and recovery sentiment.",
+      "falsifiable": true
+    }
+  ],
+  "agent_assignments": [
+    {
+      "sub_question_id": "SQ1",
+      "primary_agent": "Perplexity",
+      "secondary_agent": "Gemini",
+      "source_type_required": "official_docs"
+    },
+    {
+      "sub_question_id": "SQ1",
+      "primary_agent": "Claude",
+      "secondary_agent": null,
+      "source_type_required": "primary_text"
+    },
+    {
+      "sub_question_id": "SQ2",
+      "primary_agent": "Gemini",
+      "secondary_agent": "DecorrelatedLane",
+      "source_type_required": "vendor_pricing"
+    },
+    {
+      "sub_question_id": "SQ3",
+      "primary_agent": "Perplexity",
+      "secondary_agent": "DecorrelatedLane",
+      "source_type_required": "official_docs"
+    },
+    {
+      "sub_question_id": "SQ4",
+      "primary_agent": "Grok",
+      "secondary_agent": "Perplexity",
+      "source_type_required": "social_signal"
+    },
+    {
+      "sub_question_id": "SQ4",
+      "primary_agent": "Gemini",
+      "secondary_agent": null,
+      "source_type_required": "news_recent"
+    }
+  ],
+  "lane_roles": [
+    {
+      "lane_id": "perplexity",
+      "agent": "Perplexity",
+      "role": "evidence",
+      "lineage": "mixed",
+      "execution_surface": "Perplexity Pro web"
+    },
+    {
+      "lane_id": "gemini",
+      "agent": "Gemini",
+      "role": "evidence",
+      "lineage": "Google",
+      "execution_surface": "Gemini Advanced web"
+    },
+    {
+      "lane_id": "grok",
+      "agent": "Grok",
+      "role": "sentiment",
+      "lineage": "xAI",
+      "execution_surface": "Grok web"
+    },
+    {
+      "lane_id": "claude",
+      "agent": "Claude",
+      "role": "synthesis",
+      "lineage": "Anthropic",
+      "execution_surface": "browser-agent"
+    },
+    {
+      "lane_id": "deepseek",
+      "agent": "DecorrelatedLane",
+      "role": "decorrelated",
+      "lineage": "decorrelated",
+      "execution_surface": "manual"
+    }
+  ],
+  "phase_2_prompts": [
+    {
+      "sub_question_id": "SQ1",
+      "agent": "Perplexity",
+      "lane_id": "perplexity",
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching which password manager a small family should adopt. Sub-question SQ1: Which password manager has the strongest security architecture and breach record for family use? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ1",
+      "agent": "Gemini",
+      "lane_id": "gemini",
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching which password manager a small family should adopt. Sub-question SQ1: Which password manager has the strongest security architecture and breach record for family use? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ1",
+      "agent": "Claude",
+      "lane_id": "claude",
+      "ready_to_paste_prompt": "You are the Claude lane (synthesis role) researching which password manager a small family should adopt. Sub-question SQ1: Which password manager has the strongest security architecture and breach record for family use? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ2",
+      "agent": "Gemini",
+      "lane_id": "gemini",
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching which password manager a small family should adopt. Sub-question SQ2: How do family-plan prices and seat limits compare across the leading candidates? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ2",
+      "agent": "DecorrelatedLane",
+      "lane_id": "deepseek",
+      "ready_to_paste_prompt": "You are the DecorrelatedLane lane (decorrelated role) researching which password manager a small family should adopt. Sub-question SQ2: How do family-plan prices and seat limits compare across the leading candidates? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ3",
+      "agent": "Perplexity",
+      "lane_id": "perplexity",
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching which password manager a small family should adopt. Sub-question SQ3: Which product has the widest cross-platform and browser coverage for a mixed-device household? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ3",
+      "agent": "DecorrelatedLane",
+      "lane_id": "deepseek",
+      "ready_to_paste_prompt": "You are the DecorrelatedLane lane (decorrelated role) researching which password manager a small family should adopt. Sub-question SQ3: Which product has the widest cross-platform and browser coverage for a mixed-device household? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ4",
+      "agent": "Grok",
+      "lane_id": "grok",
+      "ready_to_paste_prompt": "You are the Grok lane (sentiment role) researching which password manager a small family should adopt. Sub-question SQ4: What is community sentiment on support quality and account-recovery experiences? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ4",
+      "agent": "Perplexity",
+      "lane_id": "perplexity",
+      "ready_to_paste_prompt": "You are the Perplexity lane (evidence role) researching which password manager a small family should adopt. Sub-question SQ4: What is community sentiment on support quality and account-recovery experiences? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    },
+    {
+      "sub_question_id": "SQ4",
+      "agent": "Gemini",
+      "lane_id": "gemini",
+      "ready_to_paste_prompt": "You are the Gemini lane (evidence role) researching which password manager a small family should adopt. Sub-question SQ4: What is community sentiment on support quality and account-recovery experiences? Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, before anything else — everything before it is treated as echoed prompt and ignored. Deliver six sections: TL;DR, Findings, Conflicts and uncertainties, What would change your recommendation, Sources consulted, Coverage gaps. Tag every factual claim [HIGH], [MEDIUM], or [LOW] by confidence; answering \"insufficient evidence\" is permitted and expected over guessing. Cite every factual claim with a LIVE, resolvable URL (https://...) and prioritise primary sources over aggregators; where sources conflict, present both positions. Do not use marketing copy or vendor self-promotion as evidence.\nOUTPUT FORMAT (machine-checked — follow literally):\n===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line\n## TL;DR\n- <verdict bullet — three of these>\n## Findings\n1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence\n2. [MEDIUM] <next finding>. Source: https://example.org/report\n3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data\n## Conflicts and uncertainties\n## What would change your recommendation\n## Sources consulted\n- <at least 3 distinct https URLs, one per line>\n## Coverage gaps\nHeadings are plain full lines with nothing after the name. Findings are plain \"1.\" lines —\nat least three of them, no blockquotes, no code fences anywhere in the answer — each with\nits own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL."
+    }
+  ],
+  "lanes_unavailable": [],
+  "disqualifying_sources": [
+    "Affiliate listicles with no hands-on testing methodology",
+    "Vendor comparison pages that rank their own product first"
+  ],
+  "success_criteria": [
+    "One recommended password manager supported by at least two independent evidence lanes",
+    "Every [HIGH] claim traceable to a primary source with a resolvable URL"
+  ],
+  "known_traps": [
+    "Conflating a browser extension audit with an audit of the core vault",
+    "Treating a bug-bounty payout as equivalent to a disclosed breach"
+  ]
+}

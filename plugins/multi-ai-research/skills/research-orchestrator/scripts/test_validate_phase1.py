@@ -65,6 +65,47 @@ class ValidatePhase1Tests(unittest.TestCase):
         self.assertEqual(report["result"], "pass")
         self.assertEqual(report["failures"], [])
 
+    def test_pass_golden_loop(self):
+        # A decomposition produced by following the composed Phase-1 prompt
+        # end-to-end, every prompt carrying the full contract + the literal
+        # OUTPUT FORMAT skeleton — locks the prompt -> gate loop, not just
+        # the gate in isolation.
+        code, report = run_cli("pass_golden_loop.json")
+        self.assertEqual(code, 0)
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["failures"], [])
+
+    def test_prompt_doc_skeleton_parity(self):
+        import re as _re
+        doc_path = os.path.join(HERE, "..", "references",
+                                "01-prompts-library.md")
+        with open(doc_path, "r", encoding="utf-8") as fh:
+            doc = fh.read()
+        blocks = _re.findall(
+            r"OUTPUT FORMAT \(machine-checked[^\n]*\n(?:.+\n)*?"
+            r"[^\n]*live https URL\.\n", doc)
+        # The skeleton appears twice (Phase-1 decomposition prompt + Phase-2
+        # fan-out prompt) and the copies must never drift.
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(blocks[0], blocks[1])
+        skeleton = blocks[0].rstrip("\n")
+        # The example must demonstrate the >=3 findings floor the gate enforces.
+        self.assertGreaterEqual(
+            len(_re.findall(r"(?m)^\d+\. \[", skeleton)), 3)
+        # The golden fixture embeds the doc's skeleton verbatim.
+        with open(os.path.join(FIXTURES, "pass_golden_loop.json"), "r",
+                  encoding="utf-8") as fh:
+            golden = json.load(fh)
+        for entry in golden["phase_2_prompts"]:
+            self.assertIn(skeleton, entry["ready_to_paste_prompt"])
+        # Embedding the skeleton in any staged prompt must survive G5/G6.
+        doc2 = load_clean()
+        for entry in doc2["phase_2_prompts"]:
+            entry["ready_to_paste_prompt"] += "\n" + skeleton
+        code, report = run_cli(self.write_doc(doc2))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["result"], "pass")
+
     def test_fail_placeholder(self):
         code, report = run_cli("fail_placeholder.json")
         self.assertEqual(code, 1)

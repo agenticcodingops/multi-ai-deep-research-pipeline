@@ -5,6 +5,26 @@ version line (v1.3 for docs 01 and 11 as of plugin 1.2.0; v1.2 elsewhere since p
 1.1.0); the two tracks are independent — a plugin release may bump one, the other, or
 both.
 
+## 1.2.1 — 2026-07-22 — loop-closure patch
+
+Operator-directed validation of 1.2.0 surfaced one real defect and produced the proof
+the release was missing.
+
+- **The decomposition prompt now shows the skeleton it obligates.** 1.2.0 required
+  every ready prompt to carry the literal OUTPUT FORMAT skeleton, but the Phase-1
+  prompt only *referenced* it ("from the Phase-2 fan-out prompt") — a decomposer
+  pasted only the Phase-1 prompt could not reproduce a block it was never shown, so a
+  compliant decomposer would hard-fail G6: the 1.2.0 false-rejection class in reverse.
+  The skeleton is now embedded verbatim in the decomposition prompt, and a parity test
+  asserts the doc's two copies stay byte-identical, demonstrate the ≥3-findings floor,
+  and survive G5/G6 when embedded in any staged prompt.
+- **Golden happy-path fixture locks the prompt→gate loop.** `pass_golden_loop.json` is
+  a decomposition produced by following the composed Phase-1 prompt end-to-end (4 SQs,
+  10 prompts, each carrying the full contract plus the doc's literal skeleton); the
+  suite asserts it passes with zero findings. The gate had previously been proven only
+  against synthetic fixtures and the pre-fix live decomposition — the elicitation
+  direction was untested. Tests 75 → 77.
+
 ## 1.2.0 — 2026-07-22 — live-run repair release
 
 A full six-phase live run (use case 8 / overlay 13) exercised every 1.1.x gate against
