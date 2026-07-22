@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import socket
 import sys
@@ -21,11 +22,100 @@ FIXTURES = os.path.join(HERE, "fixtures", "phase2")
 PROMPT_SRC = os.path.join(FIXTURES, "02a-prompts-lanea.md")
 DEBATE_PROMPT_SRC = os.path.join(FIXTURES, "02b-prompts-debate-lanea.md")
 PROMPT_TAIL = "End of staged prompt for lane lanea."
+REFERENCES = os.path.join(HERE, "..", "references")
 
 
 def read_fixture(name):
     with open(os.path.join(FIXTURES, name), "r", encoding="utf-8") as fh:
         return fh.read()
+
+
+def extract_skeleton():
+    """The OUTPUT FORMAT skeleton shipped in references/01-prompts-library.md."""
+    path = os.path.join(REFERENCES, "01-prompts-library.md")
+    with open(path, "r", encoding="utf-8") as fh:
+        doc = fh.read()
+    blocks = re.findall(
+        r"OUTPUT FORMAT \(machine-checked[^\n]*\n(?:.+\n)*?"
+        r"[^\n]*live https URL\.\n", doc)
+    return blocks[0] if blocks else ""
+
+
+_FILL = {
+    "tldr": [
+        "- The pipeline generator is the right fit for a hobby photography "
+        "gallery site because its image tooling removes recurring manual work.",
+        "- Build-speed differences are immaterial below one thousand images, "
+        "a scale this project will not reach in its first years.",
+        "- Free static hosting tiers cover an image-heavy hobby blog with "
+        "room to spare, storage being the only real constraint.",
+    ],
+    "findings": [
+        "Built-in image pipelines resize and compress photographs at build "
+        "time, so gallery pages ship responsive derivatives instead of "
+        "full-size originals, which keeps page weight flat as the library "
+        "grows past a few hundred photographs",
+        "The theme registry lists dozens of maintained portfolio themes and "
+        "the three most popular each shipped a release within the past year, "
+        "a fair proxy for ecosystem health across every option compared in "
+        "this pass of the research",
+        "Community benchmarks report full rebuilds of a five-hundred-image "
+        "site completing well under a minute on a mid-range laptop, though "
+        "methodology varies between posts and only the cold-cache numbers "
+        "carry real comparative weight",
+    ],
+    "conflicts": "Benchmark threads disagree about incremental build "
+        "behaviour: some posters measure only changed pages being rebuilt "
+        "while others observe full-site rebuilds after any template edit, "
+        "and no post isolates cache configuration cleanly enough to settle "
+        "which behaviour is the default.",
+    "wwc": "A reproducible benchmark showing another generator building the "
+        "same five-hundred-image reference site materially faster, or "
+        "credible evidence that the image pipeline mangles embedded colour "
+        "profiles in exported photographs, would overturn the recommendation "
+        "made here.",
+    "sources": ["- https://example.com/evidence", "- https://example.org/report",
+                "- https://example.net/data"],
+    "gaps": "Nothing in this pass verified how accessible the default themes "
+        "are with a screen reader, and print stylesheet quality was not "
+        "assessed at all.",
+}
+_ITEM_LINE_RE = re.compile(
+    r"(\d+\. \[[A-Z]+\] )<[^>]*>(\. Source: https://\S+)$")
+
+
+def fill_skeleton(skeleton):
+    """Fill the shipped skeleton verbatim: slots get content, format lines
+    stay byte-for-byte, the title and trailing instruction lines are not
+    output. This is what a lane doing the literal minimum emits."""
+    out = []
+    for line in skeleton.splitlines():
+        if line.startswith("OUTPUT FORMAT ("):
+            continue
+        if line.startswith("Headings are plain"):
+            break
+        if line.startswith("==="):
+            out.append("===BEGIN LANE OUTPUT===")
+            continue
+        if line == "- <verdict bullet — three of these>":
+            out.extend(_FILL["tldr"])
+            continue
+        if line == "- <at least 3 distinct https URLs, one per line>":
+            out.extend(_FILL["sources"])
+            continue
+        m = _ITEM_LINE_RE.match(line)
+        if m:
+            index = int(line.split(".", 1)[0]) - 1
+            out.append(m.group(1) + _FILL["findings"][index] + m.group(2))
+            continue
+        out.append(line)
+        if line == "## Conflicts and uncertainties":
+            out.append(_FILL["conflicts"])
+        elif line == "## What would change your recommendation":
+            out.append(_FILL["wwc"])
+        elif line == "## Coverage gaps":
+            out.append(_FILL["gaps"])
+    return "\n".join(out) + "\n"
 
 
 class GatePhase2Tests(unittest.TestCase):
@@ -118,6 +208,45 @@ class GatePhase2Tests(unittest.TestCase):
         report = gp.run([self.stage("fail_pseudo_tags.md")])
         self.assertEqual(report["result"], "fail")
         self.assertEqual(self.status(report, "C3"), "FAIL")
+
+    def test_skeleton_fill_round_trips_gate(self):
+        # The shipped OUTPUT FORMAT skeleton, filled verbatim with minimal
+        # slot content, must pass this gate — locks the skeleton ->
+        # gate_phase2 loop generatively (re-derived from the doc each run).
+        skeleton = extract_skeleton()
+        self.assertTrue(skeleton, "skeleton not found in references/01")
+        report = gp.run([self.stage_text(fill_skeleton(skeleton))])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["files"][0]["split_method"], "sentinel")
+        for check in ("C1", "C2", "C3", "C4", "C5", "C6"):
+            self.assertEqual(self.status(report, check), "PASS", check)
+
+    def test_pass_skeleton_fill_fixture(self):
+        # The committed fixture is byte-identical to the regenerated fill,
+        # so it cannot drift from the shipped skeleton.
+        self.assertEqual(read_fixture("pass_skeleton_fill.md"),
+                         fill_skeleton(extract_skeleton()))
+        report = gp.run([self.stage("pass_skeleton_fill.md")])
+        self.assertEqual(report["result"], "pass")
+
+    def test_debate_template_fill_round_trips_gate(self):
+        # Overlay 13's Mode 2 template must keep every cue the debate gate
+        # checks for, and an output following it verbatim must pass.
+        path = os.path.join(REFERENCES, "13-overlay-deliberation-modes.md")
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = fh.read()
+        start = doc.index("DEBATE this decision.")
+        block = doc[start:doc.index("```", start)]
+        for cue in ("===BEGIN LANE OUTPUT===",
+                    "Position: FOR or Position: AGAINST",
+                    "position statement", "evidence + reasoning", "rebuttal",
+                    "flip", "KEY TENSION", "COMMON GROUND", "[REASONED]"):
+            self.assertIn(cue, block, cue)
+        report = gp.run([self.stage_debate("pass_debate_template_fill.md")])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["files"][0]["kind"], "debate")
+        for check in ("C1", "C2", "C3", "C4"):
+            self.assertEqual(self.status(report, check), "PASS", check)
 
     def test_rubric_echo_not_a_tag(self):
         self.assertIsNone(gp.TAG_RE.search(

@@ -5,6 +5,20 @@ version line (v1.3 for docs 01 and 11 as of plugin 1.2.0; v1.2 elsewhere since p
 1.1.0); the two tracks are independent — a plugin release may bump one, the other, or
 both.
 
+## 1.2.2 — 2026-07-22 — second-loop lock
+
+- **The skeleton round-trips its second consumer.** 1.2.1 locked the prompt →
+  `validate_phase1.py` loop; the OUTPUT FORMAT skeleton's other consumer is
+  `gate_phase2.py` — lane outputs follow the skeleton and are then judged by
+  C1–C7, so skeleton drift would reject users who follow it verbatim. A minimal
+  verbatim fill of the shipped skeleton was proven to pass the gate as-is (no
+  drift found), and the loop is now locked generatively:
+  `test_skeleton_fill_round_trips_gate` re-derives the fill from the shipped doc
+  on every run, `pass_skeleton_fill.md` is asserted byte-identical to that
+  regeneration, and `pass_debate_template_fill.md` plus a cue-parity check do
+  the same for overlay 13's Mode 2 template against the debate gate. Tests
+  77 → 80. No gate or contract behaviour changed.
+
 ## 1.2.1 — 2026-07-22 — loop-closure patch
 
 Operator-directed validation of 1.2.0 surfaced one real defect and produced the proof
