@@ -1,7 +1,8 @@
 # Project Startup Checklist — How to Begin Any Research Session
 
 **Owner:** AgenticCodingOps  
-**Reads with:** All other artifacts in this project
+**Reads with:** All other artifacts in this project  
+**v1.3 (2026-07-22):** multi-deliverable guidance replaced with the closed additional-render matrix; NotebookLM and Scite marked required for health content.
 
 ---
 
@@ -36,7 +37,16 @@ Ask the user (or infer from their opening message + attachments) which use case 
 
 If the use case is ambiguous, ask a single clarifying question. Do not ask multiple. The fastest disambiguator is: **"What's the final form this work takes — script, slides, blog post, ebook chapter, code, or health article?"**
 
-If the project is hybrid (e.g., research that will produce both a YouTube video AND a blog post AND a slide deck), tell the user this is fine: run one Phase 1–5 producing the primary dossier, then route Phase 6 separately to each deliverable. Pick the most demanding overlay as the primary (typically WordPress SEO or ebook for written; YouTube for video).
+If the project is hybrid (multiple deliverables wanted), the primary deliverable **derives from the selected use case** — never from the old most-demanding-overlay rule. Only these additional Phase-6 renders are supported (v1.3 closed matrix):
+
+| Primary use case | Allowed additional render IDs |
+|---|---|
+| YouTube (use case 2) | `wordpress_article` |
+| Health (use case 6) | `youtube_script`, `wordpress_article`, `ebook_chapter` |
+| Decision research (use case 8) | `deck_and_screencast` |
+| Every other use case | none |
+
+If the user wants a video **and** a deck from the outset, normalize to use case 7 (`08-overlay-deck-and-screencast.md` — one source renders to both); `presentation_deck` is not a YouTube additional render. Any combination outside the matrix gets a **separate kickoff** rather than an improvised Phase-6 branch — converting a normal dossier into a full ebook, or a non-health dossier into a health protocol, requires different Phase 1–4 work and is not "rendering."
 
 ### Step 2 — Confirm input materials
 
@@ -63,10 +73,11 @@ Confirm the user has access to the standard five-lane stack:
 - SuperGrok (Phase 2 fan-out)
 - DeepSeek — the decorrelated lane (Phase 2 fan-out). **Not optional:** every fan-out includes a different-lineage model. Web UI for non-confidential work; for confidential work the route changes to a Western-hosted API or self-host (never dropped unless no compliant route exists) — see the master methodology's decorrelated-lane rule.
 
-Plus optional agents based on use case:
-- **NotebookLM** (free with Gemini Pro) — recommended for spec-driven dev (with repo docs uploaded), ebooks (with curated PDFs), health content (with vetted source PDFs), classical/non-English primary-text research (with source texts uploaded)
+Plus per-use-case agents:
+- **NotebookLM** (free with Gemini Pro) — **required for health content**: it runs the mandatory final-dossier source-grounding pass at the Phase-5 exit check (see `07-overlay-health-content.md`) in addition to serving as a fan-out lane with vetted source PDFs. Recommended for spec-driven dev (with repo docs uploaded), ebooks (with curated PDFs), client-pitch presentations (with the client's public materials), classical/non-English primary-text research (with source texts uploaded)
 - **Elicit free tier** — required for health content; useful for academic-rigour ebook chapters
 - **Consensus free tier** — required for health content's binary intervention claims
+- **Scite** (https://scite.ai) — **required for health content** as Phase-4 verification readiness (the citation-contradiction check); it is never a Phase-2 lane
 - **Felo** — optional, useful for multilingual / non-English research
 
 If the user is missing any required-for-this-overlay tool, advise them to set it up before starting Phase 1. Do not run Phase 1 without confirmation that Phase 2 agents are accessible.
@@ -93,7 +104,7 @@ When the user returns with the five agent outputs (or attaches them), run Phase 
 After Phase 3, output the URL list for verification. Walk the user through Phase 4:
 - Manual deep-check on top 5 load-bearing citations
 - SwanRef (https://swanref.org) for academic citations
-- Scite (https://scite.ai) for any RCT / meta-analysis citations (especially for health content)
+- Scite (https://scite.ai) for any RCT / meta-analysis citations (for health content, Scite access is confirmed at kickoff in Step 4, not discovered here)
 - Save survivors to `04-verified-sources.md`, rejects to `04-rejected.md`
 
 ### Step 8 — Run Phase 5 consolidation
@@ -149,11 +160,11 @@ This is exploratory. Apply a lightweight version:
 
 ### Project shape E — "I'm producing multiple deliverables from one research pass"
 
-Common for high-effort topics — research once, route to multiple destinations.
+Common for high-effort topics — research once, route to multiple destinations. v1.3: only the closed matrix in Step 1 is supported.
 
-1. Identify the most demanding overlay (typically ebook chapter or WordPress SEO article — whichever has the strictest output discipline).
-2. Run Phase 1–5 with that overlay's output format.
-3. Phase 6 then branches: re-route the same `05-dossier.md` through each target overlay's Phase 6 step. Each routing produces a deliverable-specific final artifact.
+1. The primary render **derives from the selected use case** — run Phase 1–5 with that use case's overlay.
+2. Check the wanted extra deliverables against the Step-1 matrix. A combination outside it gets a separate kickoff (recommend the decision-first or research-first order that lets the second kickoff consume the first's outputs as classified inputs).
+3. For each allowed additional render, Phase 6 transforms — it does not re-research: load the target overlay's Phase-5 output block and Phase-6 routing; transform factual content **only** from `05-dossier.md`, `03-conflict-map.md`, and the verified/rejected-source artifacts (no new factual claims); save as `06-<render-id>.md`; then apply the target overlay's routing with that file substituted wherever it consumes the Phase-5 dossier. If preparation reveals a material evidence/coverage gap, stop that render and recommend a separate kickoff.
 
 ---
 

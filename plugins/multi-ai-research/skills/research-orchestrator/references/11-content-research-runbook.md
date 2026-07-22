@@ -1,7 +1,7 @@
 # Content & Product Research — Operational Runbook
 
 **Owner:** AgenticCodingOps
-**Status:** v1.3 (2026-07-22 — specialist lanes: light-interpretation allowance + orchestrator-local lineage-overlap note); v1.2 (2026-07-21) routed decision research to overlay 13, made the agent-access inventory drive the stack, formalised specialist lanes, capability-gated the Chairman — companion to `10-software-dev-research-runbook.md`; v1.1 added the decorrelated lane, confidence tags, live-URL rule, deck+screencast SSOT overlay
+**Status:** v1.3 (2026-07-22 — specialist lanes: light-interpretation allowance + orchestrator-local lineage-overlap note; closed multi-deliverable render matrix replacing most-demanding-overlay routing; three-skill inventory incl. `research-kickoff-builder`; health final-dossier Phase-5 exit check); v1.2 (2026-07-21) routed decision research to overlay 13, made the agent-access inventory drive the stack, formalised specialist lanes, capability-gated the Chairman — companion to `10-software-dev-research-runbook.md`; v1.1 added the decorrelated lane, confidence tags, live-URL rule, deck+screencast SSOT overlay
 **Reads with:** project knowledge artifacts 00–01, overlays 02–08 and 13, runbook 09 (Cowork/skills setup), 12 (project startup checklist); CHANGELOG-v1.1.md for v1.1 rationale
 
 ---
@@ -12,7 +12,7 @@ This is the playbook for running multi-AI research against any non-coding projec
 
 For coding projects, use `10-software-dev-research-runbook.md` instead.
 
-The two runbooks share the same 6-phase pipeline, the same skills (`research-orchestrator`, `research-requirements-check`), and the same Claude project knowledge base. They differ in:
+The two runbooks share the same 6-phase pipeline, the same skills (`research-kickoff-builder` for pre-Phase-0 kickoff authoring, `research-orchestrator`, `research-requirements-check`), and the same Claude project knowledge base. They differ in:
 - Phase 0 setup (different workspace folder, no repo)
 - Phase 1 decomposition (use-case-specific via overlays 03–08, or 13 for decision research)
 - Phase 2 agent stack (often includes Elicit + Consensus for health; excludes them for software)
@@ -31,11 +31,11 @@ The two runbooks share the same 6-phase pipeline, the same skills (`research-orc
 | YouTube video (script ONLY, no slides) | This runbook | 03-overlay-youtube-script.md | Recordable script + companion blog |
 | Ebook (long-form, multi-chapter) | This runbook | 05-overlay-ebook.md | EPUB / PDF / Kindle |
 | WordPress + Elementor SEO blog article | This runbook | 06-overlay-wordpress-seo.md | Published blog post |
-| Health content (back pain, longevity, biohacking, focus) | This runbook | 07-overlay-health-content.md | Evidence-graded protocol → any output format |
-| Market / product research with affiliate links | This runbook | 06 (primary) + 03 (if also YouTube) | Blog + video with affiliate links |
+| Health content (back pain, longevity, biohacking, focus) | This runbook | 07-overlay-health-content.md | Evidence-graded health protocol (+ matrix-listed derivative renders) |
+| Market / product research with affiliate links | This runbook | 03 (primary, when video leads) with `wordpress_article` as the additional render; otherwise 06 alone, with a separate kickoff for a video | Blog + video with affiliate links |
 | Personal / market decision research (best laptop, life decisions, career moves) | This runbook | 13-overlay-deliberation-modes.md (primary — Decision Brief output) | Decision Brief the operator acts on |
 
-If a project has multiple output formats (e.g., hair-product research → blog + YouTube + LinkedIn post), pick the **most demanding overlay as primary** and route the dossier through other overlays in Phase 6. WordPress SEO is usually the strictest (keyword discipline, top-10 SERP analysis); ebook chapters are second strictest (word count discipline, footnoted citations). See "Multi-deliverable projects" below.
+If a project has multiple output formats, the primary render **derives from the selected use case** — v1.3 replaces the old most-demanding-overlay rule with a closed matrix. Supported additional Phase-6 renders: YouTube (use case 2) → `wordpress_article`; Health (use case 6) → `youtube_script`, `wordpress_article`, `ebook_chapter`; Decision research (use case 8) → `deck_and_screencast`; every other use case → none. A video **and** a deck wanted from the outset normalizes to use case 7 (overlay 08). Any other combination gets a separate kickoff. See "Multi-deliverable projects" below.
 
 ---
 
@@ -317,8 +317,10 @@ Apply the Chairman prompt from 01-prompts-library.md using the
 07-overlay-health-content.md / etc.> output format.
 
 If this is a multi-deliverable project: produce the dossier in the PRIMARY 
-overlay's format (the most demanding one). Secondary overlays will be 
-handled in Phase 6 by routing the same dossier through each one.
+overlay's format — the primary overlay derives from the selected use case 
+(when overlay 13 is layered, Phase 5 uses the Decision Brief format without 
+changing the primary render). Allowed additional renders are handled in 
+Phase 6 as transforms of this dossier.
 
 [Paste all 02-*.md, 03-conflict-map.md, 04-verified-sources.md, 
 04-rejected.md inline below]
@@ -393,25 +395,22 @@ Upload all inputs + agent outputs + conflict map + verified sources + dossier. R
 
 ### Multi-deliverable projects
 
-Pattern: produce one Phase 5 dossier in the most demanding overlay's format, then route through other overlays' Phase 6.
+Pattern (v1.3): produce one Phase-5 dossier in the **selected use case's** format, then transform into the matrix-allowed additional renders in Phase 6. The closed matrix: YouTube (2) → `wordpress_article`; Health (6) → `youtube_script`, `wordpress_article`, `ebook_chapter`; Decision research (8) → `deck_and_screencast`; every other use case → none. Combinations outside the matrix get a separate kickoff.
 
-**🆕 Special case — combined deck + screencast (v1.1):** If your project needs BOTH a slide deck AND a screencast/YouTube video from the same content (which is most of your presentations going forward), use the unified `08-overlay-deck-and-screencast.md` from the start. Don't run overlays 03 and 04 separately — overlay 08 produces a single Markdown source that renders to both formats and eliminates drift. Marp renders the deck; Descript captures and edits the screencast.
+**🆕 Special case — combined deck + screencast (v1.1):** If your project needs BOTH a slide deck AND a screencast/YouTube video from the same content (which is most of your presentations going forward), use the unified `08-overlay-deck-and-screencast.md` from the start — normalize to use case 7 rather than storing two renders. Don't run overlays 03 and 04 separately — overlay 08 produces a single Markdown source that renders to both formats and eliminates drift. Marp renders the deck; Descript captures and edits the screencast.
 
-**For all other multi-deliverable projects (e.g., hair-product → blog + YouTube short + LinkedIn carousel):**
+**For each allowed additional render (v1.3 derivative contract):**
 
-1. Run Phase 6 for primary overlay (e.g., WordPress publish)
-2. Take the same 05-dossier.md
-3. In a new Claude.ai chat in this project, ask for re-formatting per the secondary overlay:
-   ```
-   Re-format this dossier from WordPress SEO output into a YouTube video script 
-   per 03-overlay-youtube-script.md. Preserve all source citations and disputed 
-   claims; restructure for spoken delivery in 90-second chapters.
-   ```
-4. Save as `05-dossier-youtube.md`
-5. Run YouTube Phase 6 (record + publish)
-6. Repeat for any other deliverable formats
+1. Complete the primary render's Phase 6 first (a failed derivative never erases a completed primary artifact).
+2. Load the target overlay's Phase-5 output block and Phase-6 routing instructions.
+3. Gather target-only publication settings at Phase 6. For an additional `wordpress_article`, the kickoff must already have established a normal-web SERP provider — select Perplexity before Grok deterministically — and Phase 6 creates the lightweight preparation artifact `06a-wordpress_article-prep.md`, used **only** for query intent, headings, schema, CTA, and competitive structure (it is not the primary-SEO overlay's pre-Phase-1 research brief).
+4. Transform factual content **only** from `05-dossier.md`, `03-conflict-map.md`, and the verified/rejected-source artifacts. Target-preparation metadata may shape presentation but may introduce **no factual claim**. If preparation reveals a material evidence/coverage gap, stop this render and recommend a separate kickoff rather than researching inside Phase 6.
+5. Save as `06-<render-id>.md` (preparation as `06a-<render-id>-prep.md` when needed); retain source-profile safety requirements — especially health evidence tags/disclaimer and decision risks/conditions.
+6. Apply the target overlay's existing routing instructions with `06-<render-id>.md` substituted wherever they consume the Phase-5 dossier.
 
-The single Phase 1-5 research effort feeds multiple deliverables without re-researching.
+**Health → `ebook_chapter` exception:** use overlay 05's **chapter prose/output schema only** plus the health overlay's evidence-strength adaptation, producing one `06-ebook_chapter.md`. Do not invoke overlay 05's full-book Phase-6 assembly, and do not require or fabricate `00-book-outline.md`, `00-book-meta.md`, or `chapter-*` artifacts — this is a chapter derivative, not an ebook project.
+
+The single Phase 1–5 research effort feeds the allowed deliverables without re-researching; this is a Phase-6 transformation, not a rerun of research.
 
 ---
 
@@ -419,7 +418,7 @@ The single Phase 1-5 research effort feeds multiple deliverables without re-rese
 
 ### 1. The use case is the overlay, not the output channel
 
-YouTube and WordPress are output channels. The *research overlay* is determined by the research's structural constraints: keyword discipline (WordPress SEO), spoken-chapter cadence (YouTube), word-count chapter discipline (ebook), evidence-strength tagging (health), slide-density compression (presentation). Pick the overlay with the strictest constraints as primary.
+YouTube and WordPress are output channels. The *research overlay* is determined by the research's structural constraints: keyword discipline (WordPress SEO), spoken-chapter cadence (YouTube), word-count chapter discipline (ebook), evidence-strength tagging (health), slide-density compression (presentation). The overlay derives from the selected use case — pick the use case that matches the primary deliverable, and let the v1.3 render matrix govern any extras.
 
 ### 2. Product research is fundamentally affiliate-defensibility research
 
@@ -437,9 +436,9 @@ Content claims (product features, health protocols, historical facts, ingredient
 
 Every other agent researches the topic; one agent specifically researches **the competition**. Differentiation hooks are won by surfacing what the top 10 don't say. Don't skip this query.
 
-### 6. Multi-deliverable projects share one Phase 1-5; only Phase 6 branches
+### 6. Only matrix-listed derivatives share one Phase 1-5; only Phase 6 branches
 
-Don't run separate research for the YouTube video and the WordPress article on the same topic. Produce one dossier in the strictest overlay's format; reformat in Phase 6 for the secondary deliverables. Saves 60-90% of the research time.
+Don't run separate research for the YouTube video and the WordPress article on the same topic — `wordpress_article` is YouTube's allowed additional render, transformed from the same dossier in Phase 6. But only the closed v1.3 matrix shares a research pass this way; other format combinations get separate kickoffs, and a derivative stops (with a separate-kickoff recommendation) when preparation reveals a material coverage gap. Within the matrix this saves 60-90% of the research time.
 
 ### 7. Don't add academic-literature agents (Elicit / Consensus) to non-health content
 

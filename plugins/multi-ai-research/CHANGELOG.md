@@ -1,9 +1,56 @@
 # Changelog — multi-ai-research plugin
 
 Plugin versions track enforcement releases. The methodology documents carry their own
-version line (v1.3 for docs 01 and 11 as of plugin 1.2.0; v1.2 elsewhere since plugin
-1.1.0); the two tracks are independent — a plugin release may bump one, the other, or
-both.
+version line (the master methodology and corrected overlays are v1.3 as of plugin
+1.3.0; docs 01 and 11 were already v1.3 since plugin 1.2.0); the two tracks are
+independent — a plugin release may bump one, the other, or both.
+
+## 1.3.0 — 2026-07-22 — kickoff-builder release
+
+A third skill plus a versioned input interface: the pipeline can now start from a
+mechanically validated kickoff brief instead of a fresh interview.
+
+- **A third skill builds the kickoff.** `research-kickoff-builder` conducts an
+  Expand→Converge interview (three modes: build / refine / validate-only), drives it
+  from a shipped 64-record question catalog with a closed `when`-predicate AST, and
+  produces `00-kickoff.md` with an authoritative sentinel-delimited JSON control
+  block (`kickoff_schema_version: 1`). A headless two-invocation answer-sheet flow
+  (SHA256 catalog + instance digests) replaces any pretend interactive session.
+- **Two new stdlib-only scripts enforce it.** `validate_kickoff.py` runs gates
+  K1–K8 (structure/parity, core intent + provenance bijection, profile union,
+  modes, lane readiness, inputs/paths, ground-truth/privacy, slug/output safety)
+  against an embedded JSON Schema Draft 2020-12 machine contract evaluated by a
+  closed-vocabulary interpreter; `kickoff_io.py` owns every write — deterministic
+  render, atomic hard-link no-clobber publication, lock/hash/backup refine
+  promotion, and an approval-gated `research-config.md` merge.
+- **The orchestrator consumes prepared kickoffs.** A prepared-kickoff adapter runs
+  before Step 0.0: untrusted read, embedded consumer-side type/enum/path map, zero
+  redundant Step 0.0–0.4 questions for a valid brief, targeted questions only for
+  current-session external state, Steps 0.5/0.6 always preserved, and six new
+  deterministic `00-context.md` sections. New consumer hooks: Step 1.0 (SEO
+  pending → `00-keyword-brief.md`), venue preferences at Steps 1.1/3.3/5.1,
+  expected-lane seeding at Step 1.2, the blocking Step 5.4 health exit check, the
+  layered-base Phase-6 transform, and Step 6.3 additional renders.
+- **Methodology v1.3 corrections.** The master methodology's decorrelated-route
+  rule now matches the rest of the stack (consumer DeepSeek web UI for
+  non-confidential work; Western-hosted/self-hosted for confidential); the health
+  overlay's final-dossier NotebookLM pass moved from Phase 4 (impossible — the
+  dossier does not exist yet) to a mandatory Phase-5 exit check with SHA256
+  invalidation on overwrite; overlay 13 gained the legal-layering rule (use cases
+  1–3/5–7 only, never ebook) and the layered-base Phase-6 transform contract; the
+  old most-demanding-overlay multi-deliverable advice in checklist 12 and runbook
+  11 is replaced by the closed additional-render matrix with the use-case-7
+  normalization and separate-kickoff rule.
+- **Ten-key three-state access inventory.** `research-config.example.md` and Step
+  0.3 now carry `unknown|available|unavailable` compact-JSON entries for ten tools
+  (Scite added as health Phase-4 verification readiness, never a lane), with
+  conservative legacy migration (`none` = unknown) and a never-persist-transient
+  rule.
+- **Release verification runner.** `release/verify.ps1` (both unittest suites,
+  `claude plugin validate`, portability grep, four anchors, exact 14-name twin
+  set + hashes, golden validator CLI) now runs as Gate 3.5 inside
+  `export-public.ps1` before anything is staged. Tests 80 → 295 (80 orchestrator +
+  215 builder, including contract-drift and golden-loop suites).
 
 ## 1.2.2 — 2026-07-22 — second-loop lock
 

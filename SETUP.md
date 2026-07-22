@@ -56,14 +56,14 @@ The pipeline fans one question out to several "deep research" tools, then synthe
 
 ## 3. Install the plugin (the skills)
 
-The two skills — **research-orchestrator** (walks you through all six phases) and **research-requirements-check** (audits a requirements file before research) — ship as one plugin, with the entire methodology bundled inside it. Install from the marketplace by typing these two commands into the chat input of a Claude Code or Cowork session:
+The three skills — **research-kickoff-builder** (interviews you into a validated kickoff brief), **research-orchestrator** (walks you through all six phases), and **research-requirements-check** (audits a requirements file before research) — ship as one plugin, with the entire methodology bundled inside it. Install from the marketplace by typing these two commands into the chat input of a Claude Code or Cowork session:
 
 ```
 /plugin marketplace add https://github.com/agenticcodingops/multi-ai-deep-research-pipeline
 /plugin install multi-ai-research@agenticcodingops
 ```
 
-This works in **both Claude Code (Terminal, not VS Code Extension) and Cowork**. No ZIP handling, no file copying, no skills folder to create. Restart the app after installing, then verify in a fresh chat: *"What skills do you have available?"* — both skills should appear.
+This works in **both Claude Code (Terminal, not VS Code Extension) and Cowork**. No ZIP handling, no file copying, no skills folder to create. Restart the app after installing, then verify in a fresh chat: *"What skills do you have available?"* — all three skills should appear.
 
 ---
 

@@ -13,7 +13,7 @@ In Claude Code or Claude Cowork (Claude Desktop):
 /plugin install multi-ai-research@agenticcodingops
 ```
 
-That installs both skills — `research-orchestrator` (walks you through all six phases) and `research-requirements-check` (audits a requirements file before you research) — with the full methodology bundled inside. No file copying.
+That installs all three skills — `research-kickoff-builder` (interviews you into a validated kickoff brief the pipeline consumes without re-asking), `research-orchestrator` (walks you through all six phases), and `research-requirements-check` (audits a requirements file before you research) — with the full methodology bundled inside. No file copying.
 
 ## What it costs to run
 
@@ -23,7 +23,8 @@ Roughly **$80–110/month** for the standard five-lane setup (Claude, Perplexity
 
 1. **[SETUP.md](SETUP.md)** — accounts, apps, the plugin, folders. Once.
 2. **[docs/how-to-run-a-project.md](docs/how-to-run-a-project.md)** — running a project end to end, with a worked example ("best keyboard and mouse for software engineers") and the checkpoints where the pipeline pauses for you.
-3. **[docs/methodology/](docs/methodology/)** — the methodology itself: `00-master-methodology.md` is the spine; overlays `02`–`08` adapt it per deliverable; `13-overlay-deliberation-modes.md` adds Red Team / Debate / First Principles passes and the Decision Brief for decision-shaped research.
+3. **[docs/kickoff-builder-guide.md](docs/kickoff-builder-guide.md)** — the kickoff builder (new in 1.3.0): a short interview that produces a validated kickoff brief the pipeline consumes without re-asking the intake questions.
+4. **[docs/methodology/](docs/methodology/)** — the methodology itself: `00-master-methodology.md` is the spine; overlays `02`–`08` adapt it per deliverable; `13-overlay-deliberation-modes.md` adds Red Team / Debate / First Principles passes and the Decision Brief for decision-shaped research.
 
 A typical content project takes 90–120 minutes wall-clock, most of it unattended while the research tabs run.
 
