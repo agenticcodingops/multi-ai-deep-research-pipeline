@@ -96,6 +96,46 @@ class GatePhase2Tests(unittest.TestCase):
         self.assertEqual(report["result"], "pass")
         self.assertEqual(self.status(report, "C2"), "PASS")
 
+    def test_pass_paren_bold_headings(self):
+        report = gp.run([self.stage("pass_paren_bold_headings.md")])
+        self.assertEqual(report["result"], "pass")
+        for check in ("C2", "C3", "C6"):
+            self.assertEqual(self.status(report, check), "PASS", check)
+
+    def test_pass_blockquote_headings_and_items(self):
+        report = gp.run([self.stage("pass_blockquote_lane.md")])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(self.status(report, "C2"), "PASS")
+        self.assertEqual(self.status(report, "C3"), "PASS")
+
+    def test_pass_compound_tags(self):
+        report = gp.run([self.stage("pass_compound_tags.md")])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(self.status(report, "C3"), "PASS")
+        self.assertEqual(self.status(report, "C4"), "PASS")
+
+    def test_pseudo_tags_fail_c3(self):
+        report = gp.run([self.stage("fail_pseudo_tags.md")])
+        self.assertEqual(report["result"], "fail")
+        self.assertEqual(self.status(report, "C3"), "FAIL")
+
+    def test_rubric_echo_not_a_tag(self):
+        self.assertIsNone(gp.TAG_RE.search(
+            "tag each claim [HIGH, MEDIUM, or LOW] as instructed"))
+        self.assertIsNotNone(gp.TAG_RE.search(
+            "[HIGH, GROUND-TRUTH-ASSERTED (GT11)]"))
+
+    def test_quoted_sublist_not_phantom_items(self):
+        def insert(text):
+            return text.replace(
+                "3. [MEDIUM] Community benchmark",
+                "   > 1. Create the site and note the storage quota.\n"
+                "   > 2. Upload the gallery and confirm the derivatives render.\n"
+                "3. [MEDIUM] Community benchmark")
+        report = gp.run([self.stage("pass_clean_lane.md", transform=insert)])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(self.status(report, "C3"), "PASS")
+
     # ---------------------------------------------------------------- C1
     def test_fail_echo_empty_answer(self):
         report = gp.run([self.stage("fail_echo_empty_answer.md")])
@@ -205,6 +245,11 @@ class GatePhase2Tests(unittest.TestCase):
         sample = u"[1, 2] [3-4] [3–4] [^note] [HIGH] [REASONED] [GROUND-TRUTH-VERIFIED]"
         self.assertEqual(gp._dead_marker_count(sample), 4)
 
+    def test_compound_tag_not_dead_marker(self):
+        sample = (u"[HIGH, GROUND-TRUTH-ASSERTED (GT11)] [MEDIUM — caveat] "
+                  u"[HIGH confidence]")
+        self.assertEqual(gp._dead_marker_count(sample), 0)
+
     # ---------------------------------------------------------------- C2/C6
     def test_fail_claims_without_delivery(self):
         report = gp.run([self.stage("fail_claims_without_delivery.md")])
@@ -229,6 +274,12 @@ class GatePhase2Tests(unittest.TestCase):
         self.assertIn("common ground", self.details(report, "C2"))
         self.assertEqual(self.status(report, "C3"), "FAIL")
         self.assertIn("[REASONED]", self.details(report, "C3"))
+
+    def test_debate_position_statement_header(self):
+        report = gp.run([self.stage_debate("pass_debate_position_statement.md")])
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["files"][0]["kind"], "debate")
+        self.assertEqual(self.status(report, "C2"), "PASS")
 
     # ---------------------------------------------------------------- URL vetting
     def test_ssrf_rejected_pre_request(self):

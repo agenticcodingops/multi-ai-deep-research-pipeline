@@ -24,6 +24,8 @@ AGENTS = {"Perplexity", "Gemini", "Grok", "Claude", "ChatGPT",
 SOURCE_TYPES = {"official_docs", "peer_reviewed", "news_recent",
                 "social_signal", "primary_text", "vendor_pricing", "repo_docs"}
 GT_STATUSES = {"verified", "asserted"}
+OPERATOR_SOURCE_RE = re.compile(
+    r"^operator-[a-z0-9][a-z0-9-]{0,40}(?:[ \t]*\([^()\n]{0,80}\))?\Z")
 CLASSIFICATIONS = {"trusted", "under_scrutiny"}
 SQ_ID_RE = re.compile(r"^SQ\d{1,2}$")
 LANE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -38,6 +40,7 @@ SECTION_NAMES = ["tl;dr", "findings", "conflicts and uncertainties",
                  "what would change", "sources consulted", "coverage gaps"]
 GT_TAGS = ["[ground-truth-verified]", "[ground-truth-asserted]",
            "[contradicts-ground-truth]"]
+GT_MENTION_NEEDLES = ("ground truth", "ground-truth", "ground_truth")
 ALLOWLIST_POLICY = "word-forms"
 REQUIRED_ARRAYS = ["sub_questions", "agent_assignments", "lane_roles",
                    "phase_2_prompts", "disqualifying_sources",
@@ -49,10 +52,12 @@ PLACEHOLDER_KIND_RES = [
     ("word", re.compile(r"\bTODO\b|\bTBD\b")),
     ("insert", re.compile(r"\[INSERT", re.IGNORECASE)),
 ]
-STANDING = [("[HIGH]", "[high]"), ("[MEDIUM]", "[medium]"), ("[LOW]", "[low]"),
-            ("resolvable URL", "resolvable url"),
-            ("primary sources", "primary sources"),
-            ("coverage gaps", "coverage gaps")]
+STANDING = [("[HIGH]", ("[high]",)), ("[MEDIUM]", ("[medium]",)),
+            ("[LOW]", ("[low]",)),
+            ("resolvable URL", ("resolvable url", "resolvable https url")),
+            ("primary sources", ("primary sources",)),
+            ("coverage gaps", ("coverage gaps",)),
+            ("OUTPUT FORMAT skeleton", ("output format",))]
 _MD_ESCAPE_RE = re.compile(r"\\([\\`*_{}\[\]()#+.!>~|-])")
 _ZW_RE = re.compile(u"[​‌‍﻿]")
 
@@ -237,9 +242,9 @@ class _Validator(object):
 
     def _vet_sub_questions(self):
         raw = self.lst("sub_questions")
-        if not 4 <= len(raw) <= 8:
+        if not 4 <= len(raw) <= 12:
             self.fail("G1", None,
-                      "sub_questions count {0} outside the required 4-8".format(len(raw)))
+                      "sub_questions count {0} outside the required 4-12".format(len(raw)))
         ids = []
         for index, entry in enumerate(raw):
             where = "sub_questions[{0}]".format(index)
@@ -459,27 +464,36 @@ class _Validator(object):
             if not isinstance(entry, dict):
                 self.fail("G1", None, "{0}: must be an object".format(where))
                 continue
+            usable = True
             phase = entry.get("phase")
             if not (isinstance(phase, (int, float)) and not isinstance(phase, bool)
                     and float(phase) in DEFERRED_PHASES):
+                hint = (" — phase must be a JSON number, not a string"
+                        if isinstance(phase, str) else "")
                 self.fail("G1", None,
-                          "{0}: phase must be one of {1} (got {2!r})".format(
-                              where, list(DEFERRED_PHASES), phase))
-                continue
+                          "{0}: phase must be one of {1} (got {2!r}){3}".format(
+                              where, list(DEFERRED_PHASES), phase, hint))
+                usable = False
             template = entry.get("prompt_template")
             if not isinstance(template, str):
+                hint = ""
+                if isinstance(entry.get("ready_to_paste_prompt"), str):
+                    hint = (" — found 'ready_to_paste_prompt'; deferred prompts "
+                            "must use 'prompt_template' (rename the key)")
                 self.fail("G1", None,
-                          "{0}: prompt_template must be a string".format(where))
-                continue
+                          "{0}: prompt_template must be a string{1}".format(
+                              where, hint))
+                usable = False
             declared = entry.get("declared_placeholders")
             if not (isinstance(declared, list)
                     and all(isinstance(x, str) for x in declared)):
                 self.fail("G1", None,
                           "{0}: declared_placeholders must be an array of "
                           "strings".format(where))
-                continue
-            self.deferred.append({"phase": float(phase), "template": template,
-                                  "declared": set(declared)})
+                usable = False
+            if usable:
+                self.deferred.append({"phase": float(phase), "template": template,
+                                      "declared": set(declared)})
 
     # ------------------------------------------------------------------ G2
     def g2_verdicts(self):
@@ -607,11 +621,14 @@ class _Validator(object):
             for name in SECTION_NAMES:
                 if name not in low:
                     missing.append("section name '{0}'".format(name))
-            for shown, needle in STANDING:
-                if needle not in low:
+            for shown, needles in STANDING:
+                if not any(needle in low for needle in needles):
                     missing.append(shown)
             if self.claims:
-                if "ground truth" not in low:
+                mention_scope = low
+                for tag in GT_TAGS:
+                    mention_scope = mention_scope.replace(tag, " ")
+                if not any(n in mention_scope for n in GT_MENTION_NEEDLES):
                     missing.append("ground truth")
                 for claim in self.claims:
                     claim_id = claim.get("claim_id")
@@ -713,10 +730,20 @@ class _Validator(object):
                 self.fail("G8", None, "{0}: status {1!r} not in {2}".format(
                     label, claim.get("status"), sorted(GT_STATUSES)))
             url = claim.get("source_url")
-            if not (isinstance(url, str) and url.startswith("https://")):
-                self.fail("G8", None,
-                          "{0}: source_url must start with https:// (got {1!r})".format(
-                              label, url))
+            https_ok = isinstance(url, str) and url.startswith("https://")
+            if claim.get("status") == "asserted":
+                marker_ok = isinstance(url, str) and \
+                    OPERATOR_SOURCE_RE.match(url) is not None
+                if not (url is None or https_ok or marker_ok):
+                    self.fail("G8", None,
+                              "{0}: asserted source_url must be https://, null, or "
+                              "an operator-<provenance> marker (got {1!r})".format(
+                                  label, url))
+            else:
+                if not https_ok:
+                    self.fail("G8", None,
+                              "{0}: source_url must start with https:// (got "
+                              "{1!r})".format(label, url))
 
 
 def _build_matrix(columns, prompt_lanes, failures, warnings):

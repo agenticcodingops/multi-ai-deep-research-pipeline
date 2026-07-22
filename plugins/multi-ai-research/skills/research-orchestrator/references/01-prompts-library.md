@@ -1,7 +1,7 @@
 # Prompts Library — Multi-AI Research Pipeline
 
 **Owner:** AgenticCodingOps  
-**Version:** 1.2 (2026-07-21 — Phase-1 spec becomes canonical (lane roles, ground truth, contaminant audits, deferred placeholders); Phase-2 adds the output sentinel + ground-truth block; Phase-3 adds the sentiment-lane rule + conditional DCI tally; see the plugin CHANGELOG. v1.1 (2026-06-01) added confidence + "what would change" + live-URL rule + the keep-matrix note)  
+**Version:** 1.3 (2026-07-22 — Phase-2 gains the machine-checked OUTPUT FORMAT skeleton; sub-question range widens to 4-12; ground truth admits operator-private markers; deferred-prompt key spec named. v1.2 (2026-07-21) made the Phase-1 spec canonical (lane roles, ground truth, contaminant audits, deferred placeholders), added the Phase-2 output sentinel + ground-truth block and the Phase-3 sentiment-lane rule + conditional DCI tally; see the plugin CHANGELOG. v1.1 (2026-06-01) added confidence + "what would change" + live-URL rule + the keep-matrix note)  
 **Reads with:** `00-master-methodology.md`
 
 ---
@@ -26,7 +26,7 @@ Time horizon: prioritise sources from 2024-2026 unless the question is intrinsic
 
 Output strict JSON with these keys (this is the canonical Phase 1 output spec, v1.2 / schema_version 2):
 - schema_version: 2
-- sub_questions: array of 4-8 atomic, independently researchable questions, each an object
+- sub_questions: array of 4-12 atomic, independently researchable questions, each an object
   {id ("SQ1"…), question, verdict_forced, falsifiable} — verdict_forced states the decision the
   answer must land on (a recommendation plus a confidence level, never a summary); falsifiable
   must be true. Reject any sub-question whose best possible answer is a summary.
@@ -42,7 +42,8 @@ Output strict JSON with these keys (this is the canonical Phase 1 output spec, v
   and carrying the COMPLETE Phase 2 contract in its own text: the sentinel instruction
   (the token ===BEGIN LANE OUTPUT=== named inline in a sentence, never on its own line),
   all six output section names, the confidence-tag, live-URL, primary-source and
-  coverage-gaps rules, and the filled ground-truth block when claims exist. A prompt that
+  coverage-gaps rules, the literal OUTPUT FORMAT skeleton from the Phase-2 fan-out prompt,
+  and the filled ground-truth block when claims exist. A prompt that
   merely references the contract will fail the Phase 2 gate when the agent, following only
   what it was pasted, omits the sentinel or the section structure.
 - agent_assignments: array of {sub_question_id, primary_agent, secondary_agent, source_type_required}
@@ -58,13 +59,19 @@ Output strict JSON with these keys (this is the canonical Phase 1 output spec, v
   input, keyed by input_id. Two-tier contaminant rule: an audit block MUST be able to name the
   contaminant it reports; NO ready_to_paste_prompt may carry it.
 - ground_truth (when the operator recorded ground-truth claims): array of {claim_id ("GT1"…),
-  statement, metric_definition, status ∈ [verified, asserted], source_url (https)} — carried
+  statement, metric_definition, status ∈ [verified, asserted], source_url (https; or null /
+  an operator-provenance marker such as "operator-private-sample" when the claim derives
+  from an operator-private dataset — such claims are always status asserted)} — carried
   verbatim from 00-context.md, tags as verified at Step 0.6
 - deferred_phase_prompts (optional): prompts for later passes. Only two phases may defer
-  (2.5 Debate, 4.5 Red Team), and the ONLY sanctioned placeholder token is
-  "<DRAFT_RECOMMENDATION>", permitted solely on the phase-4.5 Red Team entry (filled at
-  Step 4.5 before hand-off). Each entry's declared_placeholders must list exactly the tokens
-  its template carries (delimiters included) — and that set may contain nothing else.
+  (2.5 Debate, 4.5 Red Team). Each entry is an object {phase, prompt_template,
+  declared_placeholders}: phase is the JSON number 2.5 or 4.5 (a number, never the string
+  "2.5"), prompt_template is the complete prompt text as a single string (this exact key
+  name — never ready_to_paste_prompt, which is reserved for staged Phase-2 prompts), and
+  declared_placeholders must list exactly the tokens the template carries (delimiters
+  included) — and that set may contain nothing else. The ONLY sanctioned placeholder token
+  is "<DRAFT_RECOMMENDATION>", permitted solely on the phase-4.5 Red Team entry (filled at
+  Step 4.5 before hand-off).
 - disqualifying_sources: array of source patterns to reject
 - success_criteria: array of bullets — what a publishable answer must include
 - known_traps: array of likely failure modes for this specific topic
@@ -110,6 +117,23 @@ Output structure (markdown):
 4. What would change your recommendation (the specific evidence that would flip each verdict)
 5. Sources consulted (full live URL list)
 6. Coverage gaps: explicit "this response does NOT cover X, Y, Z"
+
+OUTPUT FORMAT (machine-checked — follow literally):
+===BEGIN LANE OUTPUT===   <- exactly this, alone, as your very first line
+## TL;DR
+- <verdict bullet — three of these>
+## Findings
+1. [HIGH] <one-sentence finding>. Source: https://example.com/evidence
+2. [MEDIUM] <next finding>. Source: https://example.org/report
+3. [LOW] <third finding — at least 3 findings items>. Source: https://example.net/data
+## Conflicts and uncertainties
+## What would change your recommendation
+## Sources consulted
+- <at least 3 distinct https URLs, one per line>
+## Coverage gaps
+Headings are plain full lines with nothing after the name. Findings are plain "1." lines —
+at least three of them, no blockquotes, no code fences anywhere in the answer — each with
+its own [HIGH]/[MEDIUM]/[LOW] tag and a live https URL.
 ```
 
 > 🆕 v1.1 changes: added the **live-URL rule** (§ requirement 1), the **confidence/abstention tag** (§ requirement 3), and section **4 "What would change your recommendation."** Rationale in CHANGELOG (#3, #7).
@@ -126,7 +150,9 @@ The operator asserts the following claims. Tag semantics:
 research: if your findings contradict it, REPORT the contradiction explicitly, tagged
 [CONTRADICTS-GROUND-TRUTH], with your source — but do not substitute your own figure.
 [GROUND-TRUTH-ASSERTED] — operator-supplied, not re-verified this session. Treat as a strong
-prior: you may contradict it, but only with a cited primary source.
+prior: you may contradict it, but only with a cited primary source. Claims from the
+operator's own private dataset carry operator-private-sample in place of a source URL;
+they are always ASSERTED.
 Each claim states its metric definition. Verify against that definition — not a lookalike
 metric (a rank change is not a volume change).
 Claims (one per line): claim_id | statement | metric definition | source URL | tag

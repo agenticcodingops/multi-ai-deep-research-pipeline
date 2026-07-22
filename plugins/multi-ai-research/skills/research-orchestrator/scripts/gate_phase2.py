@@ -38,14 +38,18 @@ MARKER_RES = [
 MARKER_WORD_RE = re.compile(
     r"^\^?\s*(HIGH|MEDIUM|LOW|UNVERIFIED|REASONED|SENTIMENT-CONCUR"
     r"|CONTRADICTS-GROUND-TRUTH|GROUND-TRUTH-[A-Z-]+)\s*$")
-TAG_RE = re.compile(r"\[(HIGH|MEDIUM|LOW)\]")
+TAG_RE = re.compile(
+    u"\\[(HIGH|MEDIUM|LOW)(?:[ \\t]+[Cc]onfidence)?"
+    u"(?:[ \\t]*[,;:—–](?![^\\]\\n]*\\b(?:HIGH|MEDIUM|LOW)\\b)[^\\]\\n]*)?\\]")
 REASONED_RE = re.compile(r"\[REASONED\]")
 ITEM_RE = re.compile(r"(?m)^\s*\d+[.)]\s")
-BULLET_RE = re.compile(u"(?m)^\\s*[-*•]\\s+")
+QUOTED_ITEM_RE = re.compile(r"(?m)^\s*(?:>[ \t]*)+\d+[.)]\s")
+BULLET_RE = re.compile(u"(?m)^\\s*(?:>[ \\t]*)*[-*•]\\s+")
 CLAIM_RE = re.compile(
     r"(?i)(all\s+(?:six|6)\s+sections|full\s+(?:six|6)[- ]section"
     r"|sections?\s+(?:above|delivered|as\s+requested|complete))")
-_H_PRE = r"^[ \t]{0,3}(?:#{1,6}[ \t]*)?(?:\*\*[ \t]*)?(?:\d{1,2}[.)][ \t]*)?"
+_H_PRE = (r"^[ \t]{0,3}(?:>[ \t]{0,3}){0,3}(?:#{1,6}[ \t]*)?"
+          r"(?:\*\*[ \t]*)?(?:\(?\d{1,2}[.)][ \t]*)?")
 _H_SUF = r"[ \t]*:?[ \t]*(?:\*\*)?[ \t]*$"
 SECTIONS = [
     ("tldr", "TL;DR", r"TL;?DR"),
@@ -64,7 +68,9 @@ SECTION_PHRASES = {"tldr": "tl;dr", "findings": "findings section",
                    "wwc": "what would change", "sources": "sources consulted",
                    "gaps": "coverage gap"}
 DEBATE_ELEMENTS = [
-    ("position", re.compile(r"(?im)^[^\n]{0,30}\bposition\b[^\n]{0,60}$|\bposition[ \t]*:")),
+    ("position", re.compile(
+        r"(?im)^[^\n]{0,30}\bposition\b[^\n]{0,60}$|\bposition[ \t]*:"
+        r"|^[^\n]{0,40}\bposition[ \t]+statement\b[^\n]*$")),
     ("evidence/reasoning", re.compile(r"(?i)\bevidence\b|\breasoning\b")),
     ("rebuttal", re.compile(r"(?i)\brebutt(?:al|ing)\b|\bcounter[- ]argument\b")),
     ("flip-fact", re.compile(
@@ -107,6 +113,17 @@ def _content_len(text):
 
 def _distinct_urls(matches):
     return {m.rstrip(".,;:!?") for m in matches}
+
+
+def _item_starts(text):
+    """Start offsets of numbered findings items. A blockquoted list counts
+    only when the section has no plain-numbered items (a fully blockquoted
+    lane), so numbered material quoted inside a plain finding never splits
+    it into phantom items."""
+    starts = [m.start() for m in ITEM_RE.finditer(text)]
+    if starts:
+        return starts
+    return [m.start() for m in QUOTED_ITEM_RE.finditer(text)]
 
 
 def _dead_marker_count(text):
@@ -554,7 +571,7 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
                 why = "TL;DR too thin ({0} chars, {1} bullet lines)".format(chars, bullets)
             elif key == "findings":
                 findings_content = content
-                findings_count = len(ITEM_RE.findall(content))
+                findings_count = len(_item_starts(content))
                 ok = findings_count >= opts["min_findings"] and chars >= 600
                 why = "Findings too thin ({0} numbered items, {1} chars)".format(
                     findings_count, chars)
@@ -581,7 +598,7 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
             checks["C3"]["status"] = "-"
             checks["C3"]["details"].append("no Findings section to check")
         else:
-            item_starts = [m.start() for m in ITEM_RE.finditer(findings_content)]
+            item_starts = _item_starts(findings_content)
             untagged = []
             for i, s in enumerate(item_starts):
                 e = item_starts[i + 1] if i + 1 < len(item_starts) else len(findings_content)

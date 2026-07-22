@@ -11,6 +11,8 @@
 
 If you (Claude) detect that the user is starting a new research project — based on phrases like "I want to research", "help me build", "I'm starting a new project", "I have requirements for", "I need to write an article on", "I'm planning a video on" — read this document first, then load the relevant overlay.
 
+**Container note:** this checklist reads as if the artifact set lives in a Claude Project ("this project", "project knowledge"). The Project is an optional convenience container, not a requirement. The real per-phase requirement throughout this methodology is: a **fresh chat**, **extended thinking at maximum**, and the **named input artifacts attached to (or already loaded in) that chat**. When the orchestrator skill ships these artifacts bundled at `references/`, it loads them itself and no Project is needed. Read every "this project" below in that light.
+
 ---
 
 ## The kickoff routine

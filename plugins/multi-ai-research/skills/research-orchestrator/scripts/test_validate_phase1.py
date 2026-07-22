@@ -209,6 +209,53 @@ class ValidatePhase1Tests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(failed_gates(report), {"G1"})
 
+    def test_sq_count_bounds(self):
+        def extra_sqs(count):
+            return [{"id": "SQ{0}".format(i),
+                     "question": "Placeholder question {0}?".format(i),
+                     "verdict_forced": "State a verdict for area {0}.".format(i),
+                     "falsifiable": True}
+                    for i in range(5, count + 1)]
+        for count in (3, 4, 12, 13):
+            with self.subTest(count=count):
+                doc = load_clean()
+                if count == 3:
+                    doc["sub_questions"] = doc["sub_questions"][:3]
+                elif count > 4:
+                    doc["sub_questions"] += extra_sqs(count)
+                code, report = run_cli(self.write_doc(doc))
+                messages = " ".join(f["message"] for f in report["failures"])
+                if count in (3, 13):
+                    self.assertEqual(code, 1)
+                    self.assertIn("sub_questions count", messages)
+                else:
+                    self.assertNotIn("sub_questions count", messages)
+
+    def test_deferred_alias_hint(self):
+        doc = load_clean()
+        doc["deferred_phase_prompts"][0] = {
+            "phase": 4.5,
+            "purpose": "Adversarial review of the draft recommendation",
+            "ready_to_paste_prompt": "Challenge the draft: <DRAFT_RECOMMENDATION>.",
+            "declared_placeholders": ["<DRAFT_RECOMMENDATION>"],
+        }
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 1)
+        self.assertEqual(failed_gates(report), {"G1"})
+        message = " ".join(f["message"] for f in report["failures"])
+        self.assertIn("ready_to_paste_prompt", message)
+        self.assertIn("prompt_template", message)
+        # A string phase and the alias key are reported together, not one
+        # behind the other.
+        doc["deferred_phase_prompts"][0]["phase"] = "4.5"
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 1)
+        g1 = [f for f in report["failures"] if f["gate"] == "G1"]
+        self.assertEqual(len(g1), 2)
+        message = " ".join(f["message"] for f in g1)
+        self.assertIn("phase must be a JSON number, not a string", message)
+        self.assertIn("rename the key", message)
+
     # ------------------------------------------------------------ G3
     def test_duplicate_assignment_pair_fails(self):
         doc = load_clean()
@@ -323,6 +370,60 @@ class ValidatePhase1Tests(unittest.TestCase):
         message = " ".join(f["message"] for f in report["failures"])
         self.assertIn("standalone", message)
 
+    def test_g6_resolvable_https_url_accepted(self):
+        doc = load_clean()
+        for entry in doc["phase_2_prompts"]:
+            entry["ready_to_paste_prompt"] = entry["ready_to_paste_prompt"] \
+                .replace("resolvable URL", "resolvable https URL")
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 0)
+        self.assertEqual(report["result"], "pass")
+
+    def test_g6_missing_url_instruction_still_fails(self):
+        doc = load_clean()
+        for entry in doc["phase_2_prompts"]:
+            entry["ready_to_paste_prompt"] = entry["ready_to_paste_prompt"] \
+                .replace("resolvable URL", "reliable citations")
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 1)
+        self.assertEqual(failed_gates(report), {"G6"})
+        message = " ".join(f["message"] for f in report["failures"])
+        self.assertIn("resolvable URL", message)
+
+    def test_g6_ground_truth_alternates_accepted(self):
+        for variant in ("Ground-truth register", "<ground_truth> register"):
+            with self.subTest(variant=variant):
+                doc = load_clean()
+                for entry in doc["phase_2_prompts"]:
+                    entry["ready_to_paste_prompt"] = \
+                        entry["ready_to_paste_prompt"].replace(
+                            "Ground truth register", variant)
+                code, report = run_cli(self.write_doc(doc))
+                self.assertEqual(code, 0)
+                self.assertEqual(report["result"], "pass")
+
+    def test_g6_tags_alone_do_not_satisfy_mention(self):
+        doc = load_clean()
+        for entry in doc["phase_2_prompts"]:
+            entry["ready_to_paste_prompt"] = entry["ready_to_paste_prompt"] \
+                .replace("Ground truth register", "GT register")
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 1)
+        self.assertEqual(failed_gates(report), {"G6"})
+        message = " ".join(f["message"] for f in report["failures"])
+        self.assertIn("ground truth", message)
+
+    def test_g6_missing_skeleton_needle_fails(self):
+        doc = load_clean()
+        for entry in doc["phase_2_prompts"]:
+            entry["ready_to_paste_prompt"] = entry["ready_to_paste_prompt"] \
+                .replace("OUTPUT FORMAT", "layout")
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 1)
+        self.assertEqual(failed_gates(report), {"G6"})
+        message = " ".join(f["message"] for f in report["failures"])
+        self.assertIn("OUTPUT FORMAT skeleton", message)
+
     def test_gt_fields_each_required_in_prompt(self):
         clean = load_clean()
         statement = clean["ground_truth"][0]["statement"]
@@ -343,6 +444,56 @@ class ValidatePhase1Tests(unittest.TestCase):
                 code, report = run_cli(self.write_doc(doc))
                 self.assertEqual(code, 1)
                 self.assertIn("G6", failed_gates(report))
+
+    # ------------------------------------------------------------ G8
+    def test_g8_asserted_source_url_forms(self):
+        accepted = [None, "absent", "operator-private-sample",
+                    "operator-private-sample (no single URL)",
+                    "operator-posting-evidence", "keep-https"]
+        for url in accepted:
+            with self.subTest(url=url):
+                doc = load_clean()
+                claim = doc["ground_truth"][0]
+                claim["status"] = "asserted"
+                if url == "absent":
+                    claim.pop("source_url")
+                elif url != "keep-https":
+                    claim["source_url"] = url
+                code, report = run_cli(self.write_doc(doc))
+                self.assertEqual(code, 0)
+                self.assertEqual(report["result"], "pass")
+        rejected = ["http://example.org/x", "see my notes",
+                    "operator-x\n(second line)", "operator-x\n"]
+        for url in rejected:
+            with self.subTest(url=url):
+                doc = load_clean()
+                doc["ground_truth"][0]["status"] = "asserted"
+                doc["ground_truth"][0]["source_url"] = url
+                code, report = run_cli(self.write_doc(doc))
+                self.assertEqual(code, 1)
+                self.assertEqual(failed_gates(report), {"G8"})
+
+    def test_g8_verified_bad_url_still_fails(self):
+        for url in (None, "operator-private-sample"):
+            with self.subTest(url=url):
+                doc = load_clean()
+                doc["ground_truth"][0]["source_url"] = url
+                code, report = run_cli(self.write_doc(doc))
+                self.assertEqual(code, 1)
+                self.assertEqual(failed_gates(report), {"G8"})
+                message = " ".join(f["message"] for f in report["failures"])
+                self.assertIn("must start with https://", message)
+
+    def test_g8_missing_status_fails_closed(self):
+        doc = load_clean()
+        del doc["ground_truth"][0]["status"]
+        doc["ground_truth"][0]["source_url"] = None
+        code, report = run_cli(self.write_doc(doc))
+        self.assertEqual(code, 1)
+        self.assertEqual(failed_gates(report), {"G8"})
+        message = " ".join(f["message"] for f in report["failures"])
+        self.assertIn("status", message)
+        self.assertIn("https://", message)
 
 
 if __name__ == "__main__":

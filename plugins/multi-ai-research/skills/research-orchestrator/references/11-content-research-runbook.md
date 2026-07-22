@@ -1,7 +1,7 @@
 # Content & Product Research — Operational Runbook
 
 **Owner:** AgenticCodingOps
-**Status:** v1.2 (2026-07-21 — decision research routes to overlay 13; agent-access inventory drives the stack; specialist lanes formalised; capability-gated Chairman) — companion to `10-software-dev-research-runbook.md`; v1.1 added the decorrelated lane, confidence tags, live-URL rule, deck+screencast SSOT overlay
+**Status:** v1.3 (2026-07-22 — specialist lanes: light-interpretation allowance + orchestrator-local lineage-overlap note); v1.2 (2026-07-21) routed decision research to overlay 13, made the agent-access inventory drive the stack, formalised specialist lanes, capability-gated the Chairman — companion to `10-software-dev-research-runbook.md`; v1.1 added the decorrelated lane, confidence tags, live-URL rule, deck+screencast SSOT overlay
 **Reads with:** project knowledge artifacts 00–01, overlays 02–08 and 13, runbook 09 (Cowork/skills setup), 12 (project startup checklist); CHANGELOG-v1.1.md for v1.1 rationale
 
 ---
@@ -198,11 +198,11 @@ For non-confidential content research (which is most content projects — hair p
 
 ### Specialist lanes (counting / empirical work) — v1.2
 
-Some projects need a lane that researches the **competition or the raw numbers rather than the topic** — the SERP-analysis agent below is the canonical case; a live job-board scan or a price-availability sweep are others. These lanes are **empirical, not interpretive**: they count, list, and quote what a source says today, and their value is coverage, not judgement. Three rules:
+Some projects need a lane that researches the **competition or the raw numbers rather than the topic** — the SERP-analysis agent below is the canonical case; a live job-board scan or a price-availability sweep are others. These lanes are **empirical, not interpretive**: they count, list, and quote what a source says today, and their value is coverage, not judgement. In practice even a counting lane does light interpretation — choosing what counts as a match, separating verified practice from marketing — and that is acceptable so long as its verdicts stay descriptive. Three rules:
 
 - Declare them in Phase 1's `lane_roles` like any other lane (role `evidence`), with an honest `execution_surface` — a named product, `browser-agent`, `orchestrator-local` (the orchestrator session runs the queries itself via its fetch tooling), or `manual`.
 - Training-lineage decorrelation matters much less for a counting lane than for a reasoning lane, so `orchestrator-local` is an acceptable surface here — it is **never** acceptable for a synthesis lane.
-- When a specialist lane shares a lineage with a reasoning lane (e.g. both run on the same model family), tag that overlap in its output so Phase 3 never mistakes their agreement for independent corroboration.
+- When a specialist lane shares a lineage with a reasoning lane (e.g. both run on the same model family), tag that overlap in its output so Phase 3 never mistakes their agreement for independent corroboration. The commonest case is `orchestrator-local`: the orchestrator is itself a Claude model, so an orchestrator-local lane always shares the Anthropic lineage with any Claude reasoning lane, and their agreement is never independent corroboration.
 
 Files follow the standard convention: prompts staged as `02a-prompts-<lane_id>.md`, output saved as `02-<lane_id>.md`, with `lane_id` declared in `lane_roles`.
 

@@ -80,7 +80,8 @@ not your default opinion.
 Decision: <statement>
 My current leaning (so counter-arguments are targeted): <if any>
 
-Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then produce:
+Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then on the
+next line write exactly Position: FOR or Position: AGAINST (your assigned side), then produce:
 (1) your position statement; (2) evidence + reasoning (cite live https URLs; tag [REASONED]);
 (3) rebuttal to the strongest opposing argument; (4) the one fact that, if true, would flip you.
 After both sides: name the KEY TENSION and the COMMON GROUND.

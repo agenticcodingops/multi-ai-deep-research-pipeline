@@ -1,8 +1,90 @@
 # Changelog — multi-ai-research plugin
 
 Plugin versions track enforcement releases. The methodology documents carry their own
-version line (v1.2 as of plugin 1.1.0); the two tracks are independent — a plugin
-release may bump one, the other, or both.
+version line (v1.3 for docs 01 and 11 as of plugin 1.2.0; v1.2 elsewhere since plugin
+1.1.0); the two tracks are independent — a plugin release may bump one, the other, or
+both.
+
+## 1.2.0 — 2026-07-22 — live-run repair release
+
+A full six-phase live run (use case 8 / overlay 13) exercised every 1.1.x gate against
+real deep-research exports for the first time. The fourteen 1.1.0 repairs all held — no
+regressions — but the run surfaced eleven MAJOR defects, headlined by the Phase 2 gate
+false-rejecting **all four** real web lanes on formatting alone. All fixed; regression
+coverage grows from 57 to 71 tests, and every gate change was verified against the run's
+archived raw exports (all four lanes now pass unmodified; every fail-closed path
+unchanged).
+
+- **Phase 2 gate accepts real-world formatting.** Real lanes emit parenthesised numbered
+  headings (`(1) TL;DR`, bold-wrapped variants), blockquoted headings and findings
+  (`> 1. …`), and compound confidence tags (`[HIGH, GROUND-TRUTH-ASSERTED (GT11)]`,
+  `[MEDIUM — qualifier]`, `[HIGH confidence]`). All were rejected on formatting despite
+  complete, correctly-cited content — the failure most likely to teach an operator to
+  switch the gate off. `_H_PRE`, `ITEM_RE`, and `TAG_RE` now accept them; pseudo-tags
+  (`[HIGHLY]`, `[High]`, `[MEDIUM-TERM]`) still fail; the fail-closed answer boundary,
+  concealment masking, and https-only citation credit are untouched.
+- **Debate gate accepts the header form of a position statement.** `(1) POSITION
+  STATEMENT — FOR: …` (a real lane's output) now satisfies the `position` element; bare
+  "position" in running prose still does not. Overlay 13's Mode 2 template now also
+  instructs a literal `Position: FOR|AGAINST` line so template and gate cannot
+  contradict each other.
+- **The Phase 2 contract now shows the machine-checked format.** Root cause of the false
+  rejections: lanes were told the section NAMES but never the exact form the gate
+  parses, so every lane guessed a different decoration and every one failed. The fan-out
+  prompt gains a literal `OUTPUT FORMAT (machine-checked — follow literally)` skeleton
+  (sentinel first line, plain `## <Name>` headings, plain `1.` findings — at least 3 —
+  standalone tags, ≥3 https sources) that every ready prompt must carry verbatim, and
+  G6 now fails any staged prompt missing the skeleton's OUTPUT FORMAT title.
+- **Sub-question ceiling raised to 12.** Use case 8 mandates 8 sub-question areas, so
+  any justified split breached the old 4–8 bound and forced a lossy merge. G1, the
+  library spec, and the manual checklist now agree on 4–12; counts of 3 and 13 still
+  fail — now test-locked (the old bound had no test at all).
+- **Ground truth can hold an operator-private prior.** G8 required https on every claim,
+  so hand-coded priors from the operator's own dataset could not live in the array and
+  were shunted to `known_traps`. An `asserted` claim may now carry `source_url: null` or
+  an operator-provenance marker (e.g. `operator-private-sample`); `verified` still
+  requires https, and a claim with a missing or invalid status falls into the https
+  branch — fail closed. Step 0.6 gains the matching rule: operator-private-dataset
+  claims are ASSERTED by definition, never VERIFIED.
+- **G6 standing-rule matching accepts stronger phrasings.** "resolvable https URL"
+  satisfies the resolvable-URL rule; hyphenated `ground-truth` or a `<ground_truth>`
+  block satisfies the ground-truth mention. A prompt with no URL-resolvability
+  instruction at all still fails.
+- **Deferred-prompt spec and gate can no longer drift.** The library now names the key
+  (`prompt_template` — never `ready_to_paste_prompt`, which is reserved for staged
+  Phase-2 prompts) and the type (`phase` is the JSON number 2.5/4.5); the validator
+  reports all field defects per entry and hints the rename when it sees the alias. On
+  the live run the key mismatch was a latent failure hidden behind the phase-type
+  failure.
+- **Decomposer self-reports are declared noise.** Step 1.5 now states that a
+  decomposer's "self-validation passed" narration is not the gate — on the live run it
+  declared all checks passed while `validate_phase1.py` found 27 failures.
+- **"Research project" defined as optional.** Steps 1.1/1.3/5.2 and the startup
+  checklist now state the real per-phase requirement — fresh chat, extended thinking at
+  maximum, named inputs attached to that chat — and a Claude Project is an optional
+  convenience container. The Phase-2 Claude-lane "separate tab, not the project"
+  decorrelation note is unchanged.
+- **Deliberation mode is a set.** `first-principles+debate+red-team` — the combined
+  flow the live run selected (the selector's high-stakes row maps to `debate+red-team`;
+  First Principles joins from its own row) — is now recordable as a `+`-joined set;
+  Steps 2.5 and 4.5 trigger on set membership. No script reads this field.
+- **Phase-1 prompt artifact named.** The composed prompt is saved as
+  `01a-phase1-prompt.md` before hand-off, so a Step 1.5 gate failure re-runs from the
+  file with the failure list appended instead of rebuilding from scratch.
+- **Specialist-lane guidance sharpened** (runbook 11): light interpretation is
+  acceptable in an empirical lane while its verdicts stay descriptive; an
+  `orchestrator-local` lane always shares the orchestrator's own Anthropic lineage, so
+  its agreement with a Claude reasoning lane is never independent corroboration.
+- Fixture policy: all new acceptance fixtures are synthetic and content-free; the live
+  run's raw exports remain outside the plugin as a private local verification corpus.
+- **Post-review hardening (same release).** An adversarial review of this release's own
+  diff found and closed: a TAG_RE rubric-echo bypass (`[HIGH, MEDIUM, or LOW]` — the
+  unfilled template form — no longer counts as an assigned tag); phantom findings items
+  from numbered lists quoted inside a plain finding (blockquoted items now count only in
+  a fully blockquoted section); a vacuous ground-truth mention check (the GT tag
+  literals alone no longer satisfy it); newline acceptance in the operator-provenance
+  marker; blockquoted TL;DR bullets not counting toward the bullet floor; and a
+  skeleton example demonstrating 2 findings where the gate requires 3.
 
 ## 1.1.1 — 2026-07-21 — review-hardening release
 

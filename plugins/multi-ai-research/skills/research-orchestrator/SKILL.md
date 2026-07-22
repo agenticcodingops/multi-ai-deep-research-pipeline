@@ -98,7 +98,7 @@ Map to an overlay file and read it from `./references/` for the use-case-specifi
 
 **Layering note:** overlay 13 also **layers on top of another overlay** when a dossier under any use case supports a decision (go/no-go, build/buy, launch, investment). Keep the primary overlay from the table and apply overlay 13 additionally — it adds between-phase passes (Phase 2.5, Phase 4.5), never replaces the primary. Record both overlays in `00-context.md`.
 
-**Deliberation-mode selection (whenever overlay 13 is active — primary or layered).** Run overlay 13's Mode selector table now and record the selection in `00-context.md` under `## Deliberation mode(s)`: `none`, `debate`, `red-team`, `debate+red-team`, or `first-principles`. A selected mode is **mandatory and blocking** (overlay contract): Debate runs at Phase 2.5 (Step 2.5), Red Team at Phase 4.5 (Step 4.5), and First Principles shapes the Step 1.2 decomposition prompt.
+**Deliberation-mode selection (whenever overlay 13 is active — primary or layered).** Run overlay 13's Mode selector table now and record the selection in `00-context.md` under `## Deliberation mode(s)`: `none`, or a `+`-joined set of `first-principles`, `debate`, `red-team` in pipeline order (Phase 1 < 2.5 < 4.5) — e.g. `debate`, `debate+red-team`, `first-principles+debate+red-team`. A selected mode is **mandatory and blocking** (overlay contract): Debate runs at Phase 2.5 (Step 2.5), Red Team at Phase 4.5 (Step 4.5), and First Principles shapes the Step 1.2 decomposition prompt.
 
 #### Step 0.2 — For spec-driven dev, identify greenfield vs brownfield
 
@@ -184,7 +184,7 @@ Create an empty `00-context.md` there (other files are created as phases complet
 <one line per lane: agent: tier / route / none — mirrored from research-config.md>
 
 ## Deliberation mode(s)
-<none / debate / red-team / debate+red-team / first-principles — set at Step 0.1 when overlay 13 is active; otherwise n/a>
+<none, or a +-joined set of first-principles / debate / red-team in pipeline order (e.g. debate+red-team) — set at Step 0.1 when overlay 13 is active; otherwise n/a>
 
 ## Ground-truth claims
 <one line per claim: GT<n> | statement | metric definition | source URL | tag (filled at Step 0.6). If none, write exactly: none>
@@ -217,11 +217,12 @@ If RED or AMBER (fix-first): pause. Output the fix prompt with explicit instruct
 
 Operator-supplied ground truth is the only assertion in this pipeline that downstream agents are told not to overturn — so it must be **verified, not merely asserted**, before it gains that authority. An unverified figure seeded into every lane is immune to correction by construction; catching exactly that class of error is the pipeline's purpose. For each claim under `## Ground-truth claims`:
 
-1. Open the claim's source URL exactly as Phase 4 verifies citations — via Firecrawl MCP or web fetch if available on this surface; otherwise ask the user to open it in a browser and report what the page says.
+1. Open the claim's source URL exactly as Phase 4 verifies citations — via Firecrawl MCP or web fetch if available on this surface; otherwise ask the user to open it in a browser and report what the page says. Claims derived from the operator's own private or hand-coded dataset (hand-built samples, internal logs, unpublished measurements) have no source URL to open — skip steps 1–2 for them and go straight to the private-dataset branch below.
 2. Confirm BOTH the claim and its **metric definition** against the page — the operator's definition, not a lookalike metric. A rank change is not a volume change; a country figure is not a region figure.
 3. Tag the claim in `00-context.md`:
    - Confirmed → `[GROUND-TRUTH-VERIFIED]` — re-checked this session. **Only this tag carries override authority** in Phases 2–5.
    - Source unreachable, ambiguous, or in disagreement → surface the discrepancy for adjudication NOW, before Phase 1: *"You stated X; the source says Y — which do we carry, and under which tag?"* Record the decision. Anything unresolved or unverifiable is downgraded to `[GROUND-TRUTH-ASSERTED]` — a strong prior that agents may contradict, but only with a cited primary source.
+   - Derived from an operator-private dataset → `[GROUND-TRUTH-ASSERTED]` **by definition**, never VERIFIED: no cited source can reproduce the figure, so it can never carry override authority. It still needs a statement and a metric definition; in the Phase-1 `ground_truth` array it carries `status: "asserted"` with `source_url: null` (or an operator-provenance marker such as `operator-private-sample`).
 4. Do not proceed to Phase 1 while any ground-truth claim is untagged.
 
 With no ground-truth claims recorded, skip this step silently.
@@ -233,7 +234,7 @@ With no ground-truth claims recorded, skip this step silently.
 Phase 1 runs best on the strongest available Claude model with extended thinking (Claude.ai web). Ask the user:
 
 > "Phase 1 decomposition runs best in Claude.ai web (strongest available Claude model + extended thinking at maximum). Two options:
-> 1. I generate the Phase 1 prompt now and you paste it into a fresh Claude.ai chat in your research project. You bring the JSON output back here, I save it as 01-decomposition.md.
+> 1. I generate the Phase 1 prompt now and you paste it into a fresh Claude.ai chat — extended thinking at maximum, with the named inputs for this phase attached to that chat. (A Claude Project whose knowledge base already holds them works too — the Project is an optional convenience container, never a requirement.) You bring the JSON output back here, I save it as 01-decomposition.md.
 > 2. I run Phase 1 here in Cowork/Claude Code with the available model. Acceptable for most projects but lower model tier than option 1.
 >
 > Which option?"
@@ -252,14 +253,16 @@ Compose the full Phase 1 prompt:
 2. Use-case-specific addition from the overlay
 3. Brownfield context (if applicable): "The user is researching changes to an existing repo at <path>. Existing relevant context: <summarised from README/docs>. Sub-questions must include 'what existing-system constraints apply' and 'what migration risks must be addressed'."
 4. Requirements-file context (if applicable): "The attached file is the prior requirements draft. Sub-questions must include verification of every external claim, technology recommendation, and architectural choice in that draft. Also surface what's missing, what constraints haven't been considered, and what alternatives weren't evaluated."
-5. **Phase 1 output spec**: use the canonical JSON spec (schema_version 2) from `01-prompts-library.md`'s decomposition prompt verbatim. Key contracts: `phase_2_prompts` is the **canonical** statement of who researches what (each prompt fully formed, zero placeholders); `agent_assignments` is derived from it and must agree exactly; `lane_roles` declares every lane's role, lineage, and execution surface; `lanes_unavailable` records useful lanes skipped for access reasons. The agent set includes the DeepSeek decorrelated lane; for confidential work its route changes (Western-hosted API or self-host) rather than the lane being dropped, and it is omitted only when no compliant route is available (Step 0.3 / Step 2.2).
+5. **Phase 1 output spec**: use the canonical JSON spec (schema_version 2) from `01-prompts-library.md`'s decomposition prompt verbatim. Key contracts: `phase_2_prompts` is the **canonical** statement of who researches what (each prompt fully formed, zero placeholders); `agent_assignments` is derived from it and must agree exactly; `lane_roles` declares every lane's role, lineage, and execution surface; `lanes_unavailable` records useful lanes skipped for access reasons. The library's Phase-2 fan-out prompt carries a literal `OUTPUT FORMAT (machine-checked — follow literally)` skeleton — every `ready_to_paste_prompt` must carry it verbatim (its sentinel line stays annotated inline, never standalone). The agent set includes the DeepSeek decorrelated lane; for confidential work its route changes (Western-hosted API or self-host) rather than the lane being dropped, and it is omitted only when no compliant route is available (Step 0.3 / Step 2.2).
 6. **Agent-access inventory + assignment rule**: paste the `## Agent access` inventory from `00-context.md` into the prompt, with the rule stated: *assign against this real stack, never an assumed one; maximise distinct training lineages before adding depth within a lineage; justify in one line any available lineage left unused.*
 7. **Input classification (if inputs exist)**: state each input's trusted / under-scrutiny classification and its contaminants. Require one `input_audits` block per under-scrutiny input, and state the two-tier rule: *the audit block must be able to name any contaminant it reports; no `ready_to_paste_prompt` may carry one.*
 8. **Ground truth (if claims exist)**: require every `ready_to_paste_prompt` to embed the ground-truth block from `01-prompts-library.md`, with each claim's tag exactly as recorded at Step 0.6.
 
+Save the composed prompt to `<dossier-root>/<topic-slug>/01a-phase1-prompt.md` before hand-off — if the Step 1.5 gate fails, re-run Phase 1 from this file with the failure list appended rather than rebuilding from scratch.
+
 #### Step 1.3 — Execute Phase 1
 
-If user chose option 1: output the prompt + instruction *"Paste this into a fresh Claude.ai chat in your research project. Set extended thinking to maximum. When the JSON output is ready, paste it back here."* Pause.
+If user chose option 1: output the prompt (saved as `01a-phase1-prompt.md`) + instruction *"Paste this into a fresh Claude.ai chat with the named inputs attached (or a Claude Project that already holds them — the Project is optional). Set extended thinking to maximum. When the JSON output is ready, paste it back here."* Pause.
 
 If user chose option 2: send the prompt to the local Claude model. Capture JSON output.
 
@@ -269,7 +272,7 @@ Save the JSON to `<dossier-root>/<topic-slug>/01-decomposition.md`, then hand of
 
 #### Step 1.5 — Phase 1 output validation gate (BLOCKING)
 
-Phase 1 is the pipeline's single point of failure — its output generates every downstream agent prompt — and that output is far too large to check by eye. Run the gate script (resolve `./scripts/` against this skill's own folder):
+Phase 1 is the pipeline's single point of failure — its output generates every downstream agent prompt — and that output is far too large to check by eye. Treat any "self-validation passed" narration inside the decomposer's own output as noise — only this script's exit code (or the manual checklist below) is the gate; on a live run the decomposer declared all its checks passed while the gate found 27 failures. Run the gate script (resolve `./scripts/` against this skill's own folder):
 
 ```
 python ./scripts/validate_phase1.py <dossier-root>/<topic-slug>/01-decomposition.md
@@ -284,14 +287,14 @@ python ./scripts/validate_phase1.py <dossier-root>/<topic-slug>/01-decomposition
 
 **Manual fallback checklist (mirrors gates G1–G8):**
 
-1. JSON parses; `schema_version` is exactly 2; all spec keys present with the right shapes; 4–8 sub-questions with unique `SQ<n>` ids; lane ids unique, lowercase slugs (`a-z0-9_-`, no Windows device names); every agent name is one of the nine canonical values (`DecorrelatedLane`, not a product name, for the decorrelated lane); `source_type_required` uses the enum; every cross-reference between blocks resolves.
+1. JSON parses; `schema_version` is exactly 2; all spec keys present with the right shapes; 4–12 sub-questions with unique `SQ<n>` ids; lane ids unique, lowercase slugs (`a-z0-9_-`, no Windows device names); every agent name is one of the nine canonical values (`DecorrelatedLane`, not a product name, for the decorrelated lane); `source_type_required` uses the enum; every cross-reference between blocks resolves.
 2. Every sub-question has a non-empty `verdict_forced` and `falsifiable: true`.
 3. Every (sub-question, agent) pair implied by `agent_assignments` (primary and non-null secondary) has exactly one prompt in `phase_2_prompts` — no duplicates on either side, never primary == secondary — and each prompt's `agent` matches the `lane_roles` agent for its `lane_id` (a swapped lane sends prompts to the wrong surface).
 4. Every lane used is declared in `lane_roles` with valid role/lineage/surface, and every sub-question has ≥2 lanes whose role is `evidence` or `decorrelated`.
 5. Read every `ready_to_paste_prompt` end-to-end: no `<TOKEN>`, `{TOKEN}`, `«TOKEN»`, `TODO`, `TBD`, `[INSERT` (a project-rules allowlist may excuse the bare words TODO/TBD only — never a delimited token). Deferred prompts: only the Red-Team phase-4.5 entry may defer, its only permitted token is `<DRAFT_RECOMMENDATION>`, and declared placeholders must match the template exactly.
-6. Every prompt carries the FULL Phase 2 contract in its own text: the sentinel instruction (token named inline, never on a standalone line inside the prompt), all six output section names, the [HIGH]/[MEDIUM]/[LOW] rule, the live-URL rule, the primary-sources bar, the coverage-gaps section — and, when claims exist, the filled ground-truth block: each claim's id, statement, metric definition, https source URL, and the three tag semantics ([GROUND-TRUTH-VERIFIED]/[GROUND-TRUTH-ASSERTED]/[CONTRADICTS-GROUND-TRUTH]).
+6. Every prompt carries the FULL Phase 2 contract in its own text: the sentinel instruction (token named inline, never on a standalone line inside the prompt), all six output section names, the [HIGH]/[MEDIUM]/[LOW] rule, the live-URL rule, the primary-sources bar, the coverage-gaps section, the OUTPUT FORMAT skeleton (the script checks its title is present in every prompt) — and, when claims exist, the filled ground-truth block: each claim's id, statement, metric definition, its https source URL when it has one, and the three tag semantics ([GROUND-TRUTH-VERIFIED]/[GROUND-TRUTH-ASSERTED]/[CONTRADICTS-GROUND-TRUTH]).
 7. Search each contaminant string — including disguised renderings (`Hugo**Max**`, zero-width splits): permitted only in the `inputs[].contaminants` declarations and inside `input_audits`; found in any prompt → FAIL.
-8. Every ground-truth claim has a statement, metric definition, status, and https source URL.
+8. Every ground-truth claim has a statement, metric definition, and status; a `verified` claim requires an https source URL, while an `asserted` claim may instead carry `source_url: null` or an operator-provenance marker such as `operator-private-sample`.
 
 **Then the decomposition-gaps review (cognitive — the script cannot do this):** compare the sub-questions against the user's stated circumstances in `00-context.md` — decision context, constraints, jurisdiction or employment specifics, inputs. List every material factor no sub-question covers as `decomposition_gaps`, and surface it: add sub-questions now, or record the user's explicit acceptance of each gap. (The class of miss this catches, from a live run: an employment decision whose sub-questions never asked about the contract-versus-permanent split that changed which options were reachable.)
 
@@ -366,9 +369,9 @@ Pause.
 
 #### Step 2.5 — Debate (BLOCKING when overlay 13 selected Debate)
 
-Runs only when `00-context.md` records `debate` (overlay 13, Mode 2), alone or as `debate+red-team`. A selected mode is mandatory (overlay contract); cancelling one requires the user's explicit decision, logged in `00-context.md`.
+Runs only when the `00-context.md` mode set contains `debate` (overlay 13, Mode 2). A selected mode is mandatory (overlay contract); cancelling one requires the user's explicit decision, logged in `00-context.md`.
 
-1. Read overlay 13, "Mode 2 — Debate". Build one prompt per participating lane from its ready-to-paste template: FOR to roughly half the lanes, AGAINST to the rest — and **the decorrelated lane always participates** (overlay 13's hard constraint: debate among same-lineage models amplifies shared bias instead of correcting it). If the decorrelated lane was skipped at Step 2.2, stop and surface it: the user must restore the lane or explicitly cancel the mode.
+1. Read overlay 13, "Mode 2 — Debate". Build one prompt per participating lane from its ready-to-paste template: FOR to roughly half the lanes, AGAINST to the rest — and **the decorrelated lane always participates** (overlay 13's hard constraint: debate among same-lineage models amplifies shared bias instead of correcting it). If the decorrelated lane was skipped at Step 2.2, stop and surface it: the user must restore the lane or explicitly cancel the mode. Fill each lane's assigned side into the template's Position line (`Position: FOR` / `Position: AGAINST`) — the Phase 2 debate gate accepts a literal `Position:` line or a `POSITION STATEMENT — FOR/AGAINST` header, and the template uses the first form.
 2. Stage per-lane files mirroring Step 2.1: `02b-prompts-debate-<lane_id>.md`.
 3. Instruct the user to run them on the same surfaces as Phase 2 and save outputs as `02b-debate-<lane_id>.md`. Pause.
 4. On resume, Step 3.1's gate covers the `02b-debate-*` files too. Debate outputs join Phase 3 as additional inputs; per overlay 13, judge **argument quality, not vote count**.
@@ -403,7 +406,7 @@ Record results in `00-context.md` as `phase2_gate: <lane>=PASS|FAIL … (script|
 6. If the output *claims* a section you cannot find structurally, FAIL.
 7. Note roughly what fraction of the file is echoed prompt.
 
-**Debate outputs (`02b-debate-<lane_id>.md`) use the Debate contract instead of items 2–3 and 6:** position statement, evidence/reasoning with at least one `[REASONED]` tag, rebuttal to the strongest opposing argument, the one flip-fact, KEY TENSION, COMMON GROUND; ≥2 distinct https URLs. Items 1, 4 (with the floor of 2), 5 and 7 apply unchanged.
+**Debate outputs (`02b-debate-<lane_id>.md`) use the Debate contract instead of items 2–3 and 6:** position statement (a literal `Position: FOR|AGAINST` line or a `POSITION STATEMENT — FOR/AGAINST` header), evidence/reasoning with at least one `[REASONED]` tag, rebuttal to the strongest opposing argument, the one flip-fact, KEY TENSION, COMMON GROUND; ≥2 distinct https URLs. Items 1, 4 (with the floor of 2), 5 and 7 apply unchanged.
 
 #### Step 3.2 — Build Phase 3 prompt
 
@@ -446,7 +449,7 @@ For health content specifically: also instruct the user to run RCT/meta-analysis
 
 #### Step 4.5 — Red Team pass (Phase 4.5 — BLOCKING when overlay 13 selected Red Team)
 
-Runs whenever `00-context.md` records `red-team` **or** `debate+red-team` (overlay 13, Mode 1). Mandatory when selected (overlay contract); cancelling requires the user's explicit decision, logged in `00-context.md` — never a silent skip. The flow is Debate → Red Team → Decision: this pass attacks the draft recommendation that has emerged from Phases 2–4, before the Chairman consolidates it.
+Runs whenever the `00-context.md` mode set contains `red-team` (overlay 13, Mode 1). Mandatory when selected (overlay contract); cancelling requires the user's explicit decision, logged in `00-context.md` — never a silent skip. The flow is Debate → Red Team → Decision: this pass attacks the draft recommendation that has emerged from Phases 2–4, before the Chairman consolidates it.
 
 1. Write the one-paragraph **draft recommendation under attack** — from `03-conflict-map.md` and the surviving sources — with its key assumptions stated explicitly. Confirm it with the user.
 2. Build one prompt per participating lane from overlay 13, "Mode 1 — Red Team", assigning each lane 1–2 of the six attack vectors; **the decorrelated lane is mandatory here** — if it was skipped at Step 2.2, stop and surface it: the user must restore the lane or explicitly cancel the mode, logged (same rule as Step 2.5). If Phase 1 staged these as `deferred_phase_prompts`, they may carry the declared placeholder `<DRAFT_RECOMMENDATION>` until this step fills it — the only sanctioned deferred token, and it must be filled before hand-off.
@@ -500,7 +503,7 @@ Sizing comes from the input-budget check above; if the set exceeds the chosen ro
 
 **Route (b) — fresh Claude.ai web chat:** output the full prompt + instruction:
 
-> "Open a fresh Claude.ai chat in your research project. Set extended thinking to maximum effort. Paste the prompt below. The output is your final dossier.
+> "Open a fresh Claude.ai chat (a research Project is optional — the prompt below carries its full input set). Set extended thinking to maximum effort. Paste the prompt below. The output is your final dossier.
 >
 > When the dossier is ready, save it back to `<dossier-root>/<topic-slug>/05-dossier.md` and tell me 'Phase 5 complete.'"
 
