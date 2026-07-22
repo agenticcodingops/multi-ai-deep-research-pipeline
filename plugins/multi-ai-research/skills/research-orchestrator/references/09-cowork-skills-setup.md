@@ -1,7 +1,7 @@
 # Cowork, Skills, and MCP Setup Guide
 
 **Owner:** AgenticCodingOps  
-**Reads with:** All other artifacts in this methodology (00–13) and the two skill files
+**Reads with:** All other artifacts in this methodology (00–13) and the three skill files
 
 ---
 
@@ -66,7 +66,7 @@ This document specifies how to set that up.
 
 ### Step 1 — Install the plugin
 
-Both skills — and the bundled methodology — ship in the `multi-ai-research` plugin. In Claude Code or Cowork:
+All three skills — and the bundled methodology — ship in the `multi-ai-research` plugin. In Claude Code or Cowork:
 
 ```
 /plugin marketplace add https://github.com/agenticcodingops/multi-ai-deep-research-pipeline
@@ -75,7 +75,7 @@ Both skills — and the bundled methodology — ship in the `multi-ai-research` 
 
 No ZIP handling or file copying is involved, and one install serves both Cowork and Claude Code. Restart Claude Desktop / Claude Code after installing.
 
-Verify: in a fresh Cowork or Claude Code session, ask: *"What skills do you have available?"* — `research-orchestrator` and `research-requirements-check` should be listed. If you previously installed pre-plugin copies (ZIP upload, or SKILL.md files copied into a skills folder), remove them — two installed versions produce stale, confusing behaviour.
+Verify: in a fresh Cowork or Claude Code session, ask: *"What skills do you have available?"* — `research-kickoff-builder`, `research-orchestrator`, and `research-requirements-check` should be listed. If you previously installed pre-plugin copies (ZIP upload, or SKILL.md files copied into a skills folder), remove them — two installed versions produce stale, confusing behaviour.
 
 ### Step 2 — (Optional) keep a local reading copy of the methodology
 

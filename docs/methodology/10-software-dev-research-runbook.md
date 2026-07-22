@@ -21,8 +21,7 @@ These are foundational and should already be in place. Re-check only if somethin
 | Item | Expected state | How to verify |
 |---|---|---|
 | Project knowledge in this Claude project | Artifacts 00–09 uploaded; project description + custom instructions reflect AgenticCodingOps research role | Open project settings, confirm files listed and instructions match those in `09-cowork-skills-setup.md` |
-| Skills in Claude Desktop | `Research Orchestrator` and `Research Requirements Check` both Personal skills, toggled on | Customize → Skills. If missing, re-upload ZIPs from project knowledge |
-| Skills in Claude Code | Same two skills available; SKILL.md files at `~/.claude/skills/<name>/SKILL.md` with frontmatter | In a Claude Code session: *"What skills do you have available?"* |
+| Skills installed (plugin model) | The `multi-ai-research` plugin installed from the marketplace; it carries `research-kickoff-builder`, `research-orchestrator`, and `research-requirements-check` with the methodology bundled | `/plugin marketplace add …` + `/plugin install multi-ai-research@agenticcodingops` per `09-cowork-skills-setup.md`; then in a fresh session: *"What skills do you have available?"* — all three should be listed |
 | Local methodology folder | `<research-stack>\` contains 00–09 as local reference copies | Optional but recommended for Cowork sessions; lets Cowork read methodology directly when needed |
 | Dossier root | `<code-workspace>\dossiers\` exists | `dir <code-workspace>\dossiers` |
 | MCPs in Claude Code | Firecrawl, GitHub, Context7 installed (high priority); Filesystem if you work outside Cowork | `claude mcp list` |

@@ -20,11 +20,25 @@ Three environments are involved. People mix these up, so pin this first:
 
 ## Step 0 — One-time setup (skip if done)
 
-Complete [SETUP.md](../SETUP.md): subscriptions, Claude Desktop and/or Claude Code, the plugin (§3 — both skills install with two commands), Firecrawl MCP, a workspace folder, and the decorrelated lane.
+Complete [SETUP.md](../SETUP.md): subscriptions, Claude Desktop and/or Claude Code, the plugin (§3 — all three skills install with two commands), Firecrawl MCP, a workspace folder, and the decorrelated lane.
 
-## Step 1 — Prepare your kickoff prompt (5 min, any text editor)
+## Step 1 — Prepare your kickoff (two ways)
 
-Fill the template (full version in the content runbook, `methodology/11-content-research-runbook.md`). Worked example:
+### Way A (preferred, new in 1.3.0) — let the kickoff builder interview you
+
+In Cowork or Claude Code say:
+
+```
+Interview me and build a kickoff brief for <your topic>.
+```
+
+The `research-kickoff-builder` skill proposes 3–4 framings for your idea (each with a one-line consequence), asks a short batched interview for the selected use case only, then validates the result mechanically (gates K1–K8) and writes `00-kickoff.md` into the dossier folder. When it finishes it prints the exact start command — run that in a **fresh session** and the orchestrator consumes the brief **without re-asking the intake questions** (it only confirms current-session facts like a changed path or a config conflict). Budgets to hold it to: at most 5 rounds / 18 questions on a cold start; at most 3 rounds once your workspace config is complete.
+
+The same skill also **refines** an existing brief ("Refine the kickoff at `<path>`" — delta questions only, side-by-side diff, explicit approval before replacing) and **validates** one read-only ("Validate the kickoff at `<path>`"). Full guide, including headless/automation use and troubleshooting: [kickoff-builder-guide.md](kickoff-builder-guide.md).
+
+### Way B — write the kickoff prompt yourself (5 min, any text editor)
+
+Direct orchestrator intake remains fully supported. Fill the template (full version in the content runbook, `methodology/11-content-research-runbook.md`). Worked example:
 
 ```
 Run the research-orchestrator skill for a content research project (NOT a software project).
@@ -49,7 +63,7 @@ You don't specify folder paths: the orchestrator asks where dossiers should live
 
 Tips that raise quality: state the *decision context* in one sentence; demand verdicts ("top-5 with pros/cons"), not surveys; declare affiliate intent so verification is intensified; always ask it to **pause for your spot-check** before the fan-out.
 
-**Friction-saver — let Claude write this for you.** Two patterns: **(a)** in any Claude chat, say *"Draft my kickoff prompt from the content runbook's template — topic: X, use case: Y, audience: Z, deliverables: …"* and paste the result here; or **(b)** skip the prepared prompt entirely — open Cowork and say *"Run the research-orchestrator skill for a content project on \<topic\> — interview me for the kickoff details,"* and answer its questions. For big projects a detailed written brief is still worth authoring — but save it as a **file** in the workspace and have your kickoff prompt point Cowork at it (Cowork reads files), rather than pasting thousands of words into chat.
+**Which way?** For anything beyond a quick exploratory run, Way A's validated brief is the better artifact: it lives in the workspace as a file the orchestrator reads (and can re-read on resume), instead of thousands of pasted words — and the validator catches missing framing before research starts, not during it. Way B (or simply *"Run the research-orchestrator skill for a content project on \<topic\> — interview me for the kickoff details"*) stays perfectly valid for quick projects.
 
 **If you accidentally started in the web project instead:** nothing is lost. Save whatever it produced (e.g. the decomposition) as a file, then open Cowork with a short kickstart that says "read the brief at \<path\> and the existing decomposition at \<path\>; validate and adopt it, don't re-derive" — and continue from there.
 
@@ -58,6 +72,8 @@ Tips that raise quality: state the *decision context* in one sentence; demand ve
 Claude Desktop → new **Cowork** session → when asked for folder access, select your research workspace (e.g. `C:\research\`). Grant the **workspace root**: you can't add folders mid-session (still true as of July 2026 — restoring this is an open feature request), so a too-narrow grant means restarting the session. (Claude Code users: just open Claude Code in the workspace folder.)
 
 ## Step 3 — Paste the kickoff prompt (then watch Phases 0–1 happen)
+
+(Way A users: paste the start command the builder printed — same effect, minus the intake questions.)
 
 The orchestrator will: resolve the dossier root (asking once if this workspace has no `research-config.md`) → create the dossier folder + `00-context.md` → run keyword/SERP research (for SEO articles) → produce `01-decomposition.md` (sub-questions, each mapped to a section and ending in a verdict) → stage **ready-to-paste prompts, one file per research agent** (`02a-prompts-*.md`) → **pause** for your review.
 
@@ -88,7 +104,7 @@ Phase 5 runs in **Claude.ai web with the strongest available model and extended 
 
 ## Step 9 — Routing (Phase 6): turn the dossier into deliverables
 
-Say what you want: *"Produce the WordPress publish pack from 05-dossier.md"* (or the LinkedIn carousel, YouTube script, etc.). One research pass feeds every format — never re-research per format. Publish, then archive the dossier folder.
+Say what you want: *"Produce the WordPress publish pack from 05-dossier.md"*. The primary deliverable derives from your use case; one research pass additionally feeds only the **supported derivative renders**: YouTube (use case 2) → WordPress article; health (use case 6) → YouTube script, WordPress article, or a single ebook chapter; decision research (use case 8) → deck + screencast. Each derivative is a Phase-6 transform of the same dossier (no new research, no new factual claims) — and if preparation reveals a real coverage gap, the pipeline stops that render and recommends a separate kickoff instead of improvising. Any other format combination is its own kickoff. Publish, then archive the dossier folder.
 
 ---
 
@@ -105,7 +121,7 @@ Detail, ready-to-paste prompts, and the mode-selector table: `methodology/13-ove
 
 ## Need both a slide deck and a screencast?
 
-Don't run the presentation and video overlays as two projects. Use case 7 (**deck + screencast**, overlay `methodology/08-overlay-deck-and-screencast.md`) produces **one Markdown source that renders to both** from a single research pass — that's exactly the duplicated-effort failure the overlay exists to prevent.
+Don't run the presentation and video overlays as two projects — and don't record a deck as an "extra render" on a YouTube project. When you want slides **and** a video from the outset, the pipeline normalizes to use case 7 (**deck + screencast**, overlay `methodology/08-overlay-deck-and-screencast.md`): **one Markdown source that renders to both** from a single research pass — exactly the duplicated-effort failure the overlay exists to prevent.
 
 ---
 
@@ -113,7 +129,7 @@ Don't run the presentation and video overlays as two projects. Use case 7 (**dec
 1. After Phase 1 (approve the plan) · 2. During Phase 2 (you run the tabs) · 3. After Phase 3 (read the conflicts) · 4. During Phase 4 (manually verify top 5) · 5. After Phase 5 (read the dossier before publishing).
 
 ## Quick troubleshooting
-- **"Skill not found"** → confirm the marketplace was added and the plugin installed: in Claude Code `/plugin` lists both, and re-running the two install commands from [SETUP.md](../SETUP.md) §3 is safe to do on any surface. Then restart Claude Desktop / Claude Code.
+- **"Skill not found"** → confirm the marketplace was added and the plugin installed: in Claude Code `/plugin` lists all three skills, and re-running the two install commands from [SETUP.md](../SETUP.md) §3 is safe to do on any surface. Then restart Claude Desktop / Claude Code.
 - **The skill behaves strangely or seems stale** → check you don't have **two versions installed at once**: an old ZIP-uploaded or hand-copied skill plus the new plugin. Remove any pre-plugin copy (claude.ai settings → capabilities for uploaded skills; delete any hand-copied skill folders), keep only the plugin.
 - **An agent's output has no clickable URLs** → re-export/re-run that tab; dead citations can't be verified and the file fails the Phase 3 gate.
 - **An agent's findings have no [HIGH]/[MEDIUM]/[LOW] tags** → re-run that lane; the orchestrator restates the tagging requirement from the prompts library.

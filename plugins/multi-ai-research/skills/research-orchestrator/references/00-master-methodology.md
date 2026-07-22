@@ -2,7 +2,7 @@
 
 **Owner:** AgenticCodingOps  
 **Status:** Living document — update when the toolchain changes  
-**Version:** 1.2 (2026-07-21 — adds ground-truth verification, deliberation-mode phase slots (2.5/4.5), lane roles + agent-access inventory, capability-gated Chairman; see the plugin CHANGELOG. v1.1 (2026-06-01) added the decorrelated lane, eval gate, automation defaults, correlated-error floor)  
+**Version:** 1.3 (2026-07-22 — decorrelated-route clarification: consumer DeepSeek web UI is permitted for non-confidential work; confidential work requires a confirmed Western-hosted or self-hosted route; see the plugin CHANGELOG. v1.2 (2026-07-21) added ground-truth verification, deliberation-mode phase slots (2.5/4.5), lane roles + agent-access inventory, capability-gated Chairman. v1.1 (2026-06-01) added the decorrelated lane, eval gate, automation defaults, correlated-error floor)  
 **Reads with:** `01-prompts-library.md` (mandatory), one or more overlay files (`02-` through `08-`, or `13-` for decision research) per project
 
 ---
@@ -65,13 +65,13 @@ Use this table to assign sub-questions in Phase 1 and to weight agents in Phase 
 | **Grok DeepSearch (SuperGrok)** | Real-time web + X/Twitter, breaking news, recent vendor announcements | Latest releases (last 30 days), social signal, GitHub/community sentiment | $30/mo |
 | **Claude (strongest available model) + web search** | Self-verification, careful long-context reasoning over uploaded files, synthesis | Cross-cutting / synthesis sub-questions; uploaded reference docs | Bundled in paid Claude plans |
 | **ChatGPT Deep Research** | Enterprise/regulated case studies, long written reports | **Optional sixth lane** — enterprise contrast, regulated-industry patterns | ChatGPT Pro — Pro Deep Research (avoids the free-tier truncation + dead-citation issue) |
-| **🆕 Decorrelated lane (DeepSeek self-hosted; Kimi/Qwen optional)** | **Error decorrelation** via non-Western training lineage + cheap reasoning | **EVERY fan-out** — to break model monoculture (see Quality bar) | Self-host VPS / API cents |
+| **🆕 Decorrelated lane (DeepSeek — consumer web UI for non-confidential work; Western-hosted API or self-hosted for confidential; Kimi/Qwen optional)** | **Error decorrelation** via non-Western training lineage + cheap reasoning | **EVERY fan-out** — to break model monoculture (see Quality bar) | Free web UI / API cents / self-host VPS |
 | **NotebookLM** (optional) | Source-grounded RAG over your own corpus — cannot hallucinate beyond uploaded sources | You have a private corpus the public web doesn't index well | Free with Gemini Pro |
 | **Elicit / Consensus** (optional) | Structured extraction / consensus over academic papers | Health, biohacking, peer-reviewed claims only | Free tiers |
 
 **Phase 5 Chairman is always the strongest available Claude model.** Reasons: very large context window, instruction-following literalness, self-verification step, zero marginal cost on a flat-rate Claude plan.
 
-**🆕 Decorrelated-lane rule (load-bearing — v1.1):** every fan-out must include **at least one model from a different training lineage** than the Western frontier stack (default: DeepSeek, self-hosted). Its outputs need not be "more correct" — they exist to surface errors the Western bloc shares. **Jurisdiction guardrail:** China-hosted models (DeepSeek/Kimi/Qwen) are **self-host or Western-host only**; never route client/confidential data through their consumer APIs (Italy's Garante banned DeepSeek's consumer service on GDPR grounds, 30 Jan 2025).
+**🆕 Decorrelated-lane rule (load-bearing — v1.1; route rule clarified v1.3):** every fan-out must include **at least one model from a different training lineage** than the Western frontier stack (default: DeepSeek). Its outputs need not be "more correct" — they exist to surface errors the Western bloc shares. **Jurisdiction guardrail:** for **non-confidential** work the consumer DeepSeek web UI is an acceptable route. For **confidential** work (client data, internal architecture, business-sensitive context) the lane must run through a **confirmed Western-hosted API or self-hosted inference** — never route confidential data through a China-hosted consumer service (Italy's Garante banned DeepSeek's consumer service on GDPR grounds, 30 Jan 2025). Drop the lane only when no compliant route exists, and record the exception.
 
 ---
 

@@ -1,6 +1,7 @@
 # Overlay — Health Content (Low Back Pain, Longevity, Focus, Biohacking)
 
-**Reads with:** `00-master-methodology.md` and `01-prompts-library.md`
+**Reads with:** `00-master-methodology.md` and `01-prompts-library.md`  
+**v1.3 (2026-07-22):** the final-dossier NotebookLM source-grounding pass moved from Phase 4 (where `05-dossier.md` does not yet exist) to a mandatory, blocking Phase-5 exit check with SHA256 invalidation on overwrite.
 
 ---
 
@@ -210,9 +211,21 @@ In addition to the standard Phase 4 procedure:
 
 3. **For supplement / pharmacological claims:** verify safety data alongside efficacy. Many supplements have weak efficacy and meaningful side effects; surface both.
 
-4. **Run the dossier through NotebookLM one more time** — upload `05-dossier.md` plus all the original source PDFs. Ask: "For each claim in the dossier, identify which uploaded source supports it, and flag any claim that cannot be traced to an uploaded source." This is the strongest source-grounding pass available.
+4. Move surviving citations to `04-verified-sources.md`. Move rejected/contradicted/unsupported citations to `04-rejected.md` with explicit reasons.
 
-5. Move surviving citations to `04-verified-sources.md`. Move rejected/contradicted/unsupported citations to `04-rejected.md` with explicit reasons.
+The final-dossier NotebookLM source-grounding pass runs **after Phase 5 produces `05-dossier.md`** — see the Phase 5 exit check below. Phase 4 itself remains mandatory and intensified exactly as above.
+
+---
+
+## Phase 5 exit check — final-dossier NotebookLM source-grounding (mandatory, blocking)
+
+Runs **after** the Chairman writes `05-dossier.md` and after the Step-5.3 CoVe decision (including any CoVe-driven overwrite), and **before any Phase 6 routing**:
+
+1. **Upload `05-dossier.md` plus all the original source PDFs to NotebookLM.** Ask: "For each claim in the dossier, identify which uploaded source supports it, and flag any claim that cannot be traced to an uploaded source." This is the strongest source-grounding pass available.
+2. This check inspects the **final dossier** for claims introduced during consolidation — the Chairman can introduce phrasing or synthesis not present in any verified source. `03-conflict-map.md` is **not** a substitute: the stated control targets the consolidated output, not the pre-consolidation conflict map.
+3. Record the result in `00-context.md`: `health_phase5_exit_check: PASS` plus the SHA256 hash of the exact `05-dossier.md` that was checked.
+4. **Invalidation rule:** any subsequent change to `05-dossier.md` invalidates the recorded check — the recorded hash no longer matches. Re-run this exit check against the new file before Phase 6.
+5. **An unsupported claim blocks Phase 6.** Either trace it to a verified source, rewrite it to what the sources support, or delete it; then re-run the check.
 
 ---
 
