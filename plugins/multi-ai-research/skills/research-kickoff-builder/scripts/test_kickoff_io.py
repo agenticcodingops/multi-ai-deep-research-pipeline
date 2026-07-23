@@ -7,8 +7,10 @@ Race/interruption simulation uses unittest.mock on os.link/os.replace and
 pre-created files — never sleeps or threads.
 """
 
+import contextlib
 import copy
 import errno
+import io
 import json
 import os
 import subprocess
@@ -31,6 +33,21 @@ def run_cli(args):
         capture_output=True, text=True)
     report = json.loads(proc.stdout) if proc.stdout.strip() else None
     return proc.returncode, report
+
+
+# The exact errno set kickoff_io maps to HARDLINK_UNSUPPORTED.
+HARDLINK_ERRNOS = (errno.EPERM, errno.EOPNOTSUPP,
+                   getattr(errno, "ENOTSUP", errno.EOPNOTSUPP),
+                   errno.ENOSYS, errno.EACCES, errno.EXDEV)
+
+
+def run_main_captured(args):
+    """In-process kio.main for mocked-FS tests; returns (code, report)."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        code = kio.main(args)
+    out = buf.getvalue().strip()
+    return code, json.loads(out) if out else None
 
 
 def write_control(ws, name="pass_uc2_youtube", mutate=None):
@@ -238,27 +255,33 @@ class FinalizeBuildTests(unittest.TestCase):
             self.assertEqual(report["code"], "COLLISION_FINAL_EXISTS")
 
     def test_hardlink_unsupported_no_rename_fallback(self):
-        with tempfile.TemporaryDirectory() as ws:
-            candidate, final = self._rendered(ws)
-            calls = {"rename": 0}
+        for eno in HARDLINK_ERRNOS:
+            with self.subTest(errno=errno.errorcode.get(eno, eno)):
+                with tempfile.TemporaryDirectory() as ws:
+                    candidate, final = self._rendered(ws)
+                    calls = {"rename": 0}
 
-            def deny_link(*_args, **_kwargs):
-                raise OSError(errno.EPERM, "hard links unsupported")
+                    def deny_link(*_args, **_kwargs):
+                        raise OSError(eno, "hard links unsupported")
 
-            def count_rename(*_args, **_kwargs):
-                calls["rename"] += 1
-                raise AssertionError("rename fallback is forbidden")
+                    def count_rename(*_args, **_kwargs):
+                        calls["rename"] += 1
+                        raise AssertionError("rename fallback is forbidden")
 
-            with mock.patch("os.link", side_effect=deny_link), \
-                    mock.patch("os.rename", side_effect=count_rename), \
-                    mock.patch("os.replace", side_effect=count_rename):
-                code = kio.main(["finalize", candidate,
-                                 "--workspace-root", ws,
-                                 "--operation", "build"])
-            self.assertEqual(code, 1)
-            self.assertEqual(calls["rename"], 0)
-            self.assertTrue(os.path.isfile(candidate))
-            self.assertFalse(os.path.exists(final))
+                    with mock.patch("os.link", side_effect=deny_link), \
+                            mock.patch("os.rename",
+                                       side_effect=count_rename), \
+                            mock.patch("os.replace",
+                                       side_effect=count_rename):
+                        code, report = run_main_captured(
+                            ["finalize", candidate,
+                             "--workspace-root", ws,
+                             "--operation", "build"])
+                    self.assertEqual(code, 1)
+                    self.assertEqual(report["code"], "HARDLINK_UNSUPPORTED")
+                    self.assertEqual(calls["rename"], 0)
+                    self.assertTrue(os.path.isfile(candidate))
+                    self.assertFalse(os.path.exists(final))
 
     def test_non_pass_candidate_never_finalized(self):
         with tempfile.TemporaryDirectory() as ws:
@@ -388,6 +411,41 @@ class FinalizeRefineTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertEqual(report["code"], "BACKUP_EXISTS")
             self.assertEqual(kio.sha256_hex_file(final), before)
+
+    def test_backup_hardlink_unsupported_fails_closed(self):
+        for eno in HARDLINK_ERRNOS:
+            with self.subTest(errno=errno.errorcode.get(eno, eno)):
+                with tempfile.TemporaryDirectory() as ws:
+                    final, candidate, before = self._published(ws)
+                    calls = {"replace": 0}
+
+                    def deny_link(*_args, **_kwargs):
+                        raise OSError(eno, "hard links unsupported")
+
+                    def count_replace(*_args, **_kwargs):
+                        calls["replace"] += 1
+                        raise AssertionError(
+                            "os.replace must not run after backup failure")
+
+                    with mock.patch("os.link", side_effect=deny_link), \
+                            mock.patch("os.replace",
+                                       side_effect=count_replace):
+                        code, report = run_main_captured(
+                            ["finalize", candidate,
+                             "--workspace-root", ws,
+                             "--operation", "refine", "--approved",
+                             "--expected-final-sha256", before])
+                    self.assertEqual(code, 1)
+                    self.assertEqual(report["code"], "HARDLINK_UNSUPPORTED")
+                    self.assertEqual(calls["replace"], 0)
+                    self.assertEqual(kio.sha256_hex_file(final), before)
+                    self.assertTrue(os.path.isfile(candidate))
+                    backups = [p for p in
+                               os.listdir(os.path.dirname(final))
+                               if p.endswith(".bak")]
+                    self.assertEqual(backups, [])
+                    lock = kio._Lock(final)
+                    self.assertFalse(os.path.exists(lock.path))
 
 
 class MergeConfigTests(unittest.TestCase):

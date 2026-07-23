@@ -9,12 +9,14 @@ on:
     paths:
       - 'plugins/**'
       - 'docs/methodology/**'
+      - '.claude-plugin/**'
       - '.github/workflows/**'
       - '.gitattributes'
   pull_request:
     paths:
       - 'plugins/**'
       - 'docs/methodology/**'
+      - '.claude-plugin/**'
       - '.github/workflows/**'
       - '.gitattributes'
   workflow_dispatch:
@@ -109,3 +111,7 @@ jobs:
       - name: Validate plugin manifest and skills
         shell: bash
         run: claude plugin validate plugins/multi-ai-research
+
+      - name: Validate marketplace manifest
+        shell: bash
+        run: claude plugin validate .
