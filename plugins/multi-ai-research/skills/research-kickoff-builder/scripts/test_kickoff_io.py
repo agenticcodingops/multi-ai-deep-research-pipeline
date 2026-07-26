@@ -515,6 +515,40 @@ class MergeConfigTests(unittest.TestCase):
             self.assertEqual(len(grok_lines), 1)
             self.assertIn('"status":"unavailable"', grok_lines[0])
 
+    def test_merge_refuses_to_write_into_a_hidden_region(self):
+        # Adversarial verification of the PR-review fix: the insert-anchor
+        # walk skips through a trailing unterminated fence (blanked to spaces
+        # by the mask), so a new entry landed INSIDE the hidden region — exit
+        # 0, MERGED, entry invisible to validation, and each re-run appended
+        # another hidden duplicate. MERGED must mean ACTIVE: the writer now
+        # re-masks the merged text and refuses when an update would be
+        # invisible, leaving the file untouched.
+        cases = {
+            "trailing unterminated fence": (
+                "# Research configuration\n\nDossier root: dossiers/\n\n"
+                "## Agent access\n\n"
+                '- Perplexity: {"status":"unknown","tier":null,"routes":[]}'
+                "\n\n```\nexample block the operator never closed\n",
+                {"dossier_root": None, "agent_access": {"gemini": {
+                    "status": "unavailable", "tier": None, "routes": []}}}),
+            "mid-line unterminated comment on the header": (
+                "# Research configuration <!-- oops\n\n## Agent access\n\n"
+                '- Grok: {"status":"unknown","tier":null,"routes":[]}\n',
+                {"dossier_root": "dossiers/", "agent_access": {}}),
+        }
+        for name, (body, payload) in cases.items():
+            with self.subTest(case=name):
+                with tempfile.TemporaryDirectory() as ws:
+                    self._write_config(ws, body)
+                    updates = self._updates(ws, payload)
+                    code, report = run_cli(
+                        ["merge-config", self._config_path(ws),
+                         "--updates", updates,
+                         "--workspace-root", ws, "--approved"])
+                    self.assertEqual(code, 1, report)
+                    self.assertEqual(report["code"], "MERGE_WOULD_HIDE")
+                    self.assertEqual(self._read_config(ws), body)
+
     def test_commented_root_before_active_root_not_updated(self):
         with tempfile.TemporaryDirectory() as ws:
             self._write_config(

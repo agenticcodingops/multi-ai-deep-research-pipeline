@@ -1386,6 +1386,34 @@ def cmd_merge_config(args):
         lines = _apply_access_updates(lines, access_updates)
 
         updated = "\n".join(lines)
+        # MERGED must mean ACTIVE. An insert anchor can walk into a trailing
+        # unterminated fence/comment (the mask blanks it to spaces, which the
+        # walk skips), landing the new line INSIDE the hidden region: exit 0,
+        # MERGED, and the entry invisible to every later validation — with a
+        # fresh hidden duplicate on each re-run (adversarial verification of
+        # the PR-review fix). Re-mask the merged text and refuse to write
+        # anything the reader would not see.
+        merged_active = _config_active_lines(updated)
+        hidden = []
+        if root_update is not None and not any(
+                l.startswith("Dossier root:") for l in merged_active):
+            hidden.append("Dossier root")
+        for agent in access_updates:
+            label = vk.CONFIG_LABELS[agent]
+            for l in merged_active:
+                m = _ACCESS_LINE_RE.match(l.strip())
+                if m and m.group(1) == label:
+                    break
+            else:
+                hidden.append(label)
+        if hidden:
+            return _emit(_report(
+                "error", "merge-config", "MERGE_WOULD_HIDE",
+                message="refusing to write: {0} would land inside a "
+                        "commented or fenced region and be invisible to "
+                        "validation — close the unterminated comment or "
+                        "fence in the config first".format(
+                            ", ".join(hidden))), 1)
         if updated == original:
             return _emit(_report(
                 "ok", "merge-config", "UNCHANGED", changed=False,

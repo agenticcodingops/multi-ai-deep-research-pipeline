@@ -510,27 +510,43 @@ ABSENCE_VERDICT_RE = re.compile(
     u"[ \\t]*(?:present|found))(?![A-Za-z])")
 # "it would be wrong to report ABSENT" is a meta-statement about the rule, not
 # a verdict; a bracketed [UNVERIFIED — could not access] is the sanctioned form.
+# The negation→verb gap must not cross hard clause punctuation, or "do not
+# mention it; I state ..." pairs a clause-1 negation with a clause-2
+# affirmative report verb (adversarial verification of the PR-review fix).
 _ABSENCE_META_RE = re.compile(
-    r"(?i)\b(?:wrong|never|not|avoid|refus\w+|rather[ \t]+than|instead[ \t]+of"
-    r"|cannot|can't|must[ \t]+not|should[ \t]+not|would[ \t]+not|won't"
-    r"|will[ \t]+not|do(?:es)?[ \t]+not|don't)\b"
-    r"[^.!?\n]{0,60}?\b(?:report|say|state|mark|claim|assert|conclude|record"
-    r"|write|declare)\w*\b")
+    u"(?i)\\b(?:wrong|never|not|avoid|refus\\w+|rather[ \\t]+than"
+    u"|instead[ \\t]+of|cannot|can't|must[ \\t]+not|should[ \\t]+not"
+    u"|would[ \\t]+not|won't|will[ \\t]+not|do(?:es)?[ \\t]+not|don't)\\b"
+    u"[^.!?\\n;:()…–—]{0,60}?"
+    u"\\b(?:report|say|state|mark|claim|assert|conclude|record"
+    u"|write|declare)\\w*\\b")
 _SENTENCE_SPLIT_RE = re.compile(r"[.!?]+(?:\s+|$)")
-# Clause punctuation between a meta negation's report verb and a verdict token
-# breaks governance: in "I cannot claim it is present; it is ABSENT" the
+# A clause break between a meta negation's report verb and a verdict token
+# ends governance: in "I cannot claim it is present; it is ABSENT" the
 # negation belongs to another clause and ABSENT is affirmative (PR review).
-_CLAUSE_BREAK_RE = re.compile(u"[;:,–—]")
+# Punctuation alone was not enough — clause boundaries spelled with a
+# space-delimited dash, a parenthesis, an ellipsis, or a coordinating
+# conjunction ("...do not state a rate limit and the hook is ABSENT")
+# carried governance across (adversarial verification).
+_CLAUSE_BREAK_RE = re.compile(
+    u"(?i)[;:,()…–—]|[ \\t]-{1,3}(?=[ \\t])"
+    u"|\\b(?:and|but|yet|nor|so)\\b")
 
 
-def _meta_governs(sentence, hit_start):
+def _meta_governs(sentence, hit_start, hit_end):
     """True when a negation+report-verb construction governs the verdict token
-    at hit_start: the verb precedes it in the same clause, with no clause
-    punctuation between. A whole-sentence search exempted any verdict that
-    merely shared a sentence with an unrelated negation."""
+    at [hit_start:hit_end]: either the verb precedes it in the same clause
+    ("never report ABSENT"), or the meta follows it in the same clause with
+    the verdict as its subject ("ABSENT is not a verdict I will record") —
+    no clause break between in either direction. A whole-sentence search
+    exempted any verdict that merely shared a sentence with an unrelated
+    negation."""
     for meta in _ABSENCE_META_RE.finditer(sentence):
         if meta.end() <= hit_start and \
                 not _CLAUSE_BREAK_RE.search(sentence, meta.end(), hit_start):
+            return True
+        if meta.start() >= hit_end and \
+                not _CLAUSE_BREAK_RE.search(sentence, hit_end, meta.start()):
             return True
     return False
 
@@ -548,22 +564,39 @@ def _sentences(text):
     sentence, and its URLs would falsely exempt an absence verdict there.
     A heading's own text is kept as a one-line block (PR review): an
     admission or a verdict does not stop being a claim because it was
-    written as a section title."""
+    written as a section title. C2's heading grammar accepts bold and bare
+    section titles too (the shipped pass_paren_bold_headings.md uses the
+    bold style), so whole-line-bold text and bare section-title lines get
+    the same boundary-plus-claim treatment, and setext underlines /
+    horizontal rules are boundaries (adversarial verification of the
+    PR-review fix: a sources link bled across a bold title, and a verdict
+    written as one was exempted by its cited neighbor)."""
     blocks = []
     current = []
+
+    def flush():
+        if current:
+            blocks.append(" ".join(current))
+            del current[:]
+
     for raw in text.splitlines():
         line = _LINE_PREFIX_RE.sub("", raw.strip())
         if not line or line.lstrip().startswith("#"):
-            if current:
-                blocks.append(" ".join(current))
-                current = []
+            flush()
             heading_text = line.lstrip("#").strip()
             if heading_text:
                 blocks.append(heading_text)
             continue
+        if re.match(r"[-=]{3,}$", line):
+            flush()
+            continue
+        bold = re.match(r"\*\*(.+)\*\*$", line)
+        if bold or any(rx.match(line) for _k, _l, rx in SECTION_RES):
+            flush()
+            blocks.append((bold.group(1) if bold else line).strip("* \t"))
+            continue
         current.append(line)
-    if current:
-        blocks.append(" ".join(current))
+    flush()
     sentences = []
     for block in blocks:
         protected = re.sub(
@@ -591,8 +624,15 @@ def _absence_after_inability(text):
         if verdict is None and "https://" not in sentence:
             for hit in ABSENCE_VERDICT_RE.finditer(sentence):
                 start = sentence.rfind("[", 0, hit.start())
-                in_tag = start != -1 and "]" not in sentence[start:hit.start()]
-                if not in_tag and not _meta_governs(sentence, hit.start()):
+                # Only the sanctioned [UNVERIFIED ...] downgrade exempts a
+                # bracketed token — "[ABSENT]" or a stray unclosed "[" is not
+                # a tag (adversarial verification of the PR-review fix).
+                in_tag = (start != -1
+                          and "]" not in sentence[start:hit.start()]
+                          and sentence[start + 1:hit.start()].lstrip()
+                          .upper().startswith("UNVERIFIED"))
+                if not in_tag and \
+                        not _meta_governs(sentence, hit.start(), hit.end()):
                     verdict = sentence
                     break
     if admission and verdict:

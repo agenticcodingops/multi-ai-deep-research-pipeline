@@ -338,7 +338,7 @@ Save as `05-dossier.md`.
 
 ### NotebookLM sanity check (same as software dev)
 
-Upload all inputs + agent outputs + conflict map + verified sources + dossier. Run the hallucination check and drop check queries from runbook 10. Especially valuable for affiliate marketing dossiers — fabricated product features create liability.
+Upload all inputs + agent outputs + conflict map + verified sources + dossier — current rounds only: never a raw-export audit copy or a `.superseded-<n>.md` file (a stale attack or debate round in the grounding corpus can spuriously "support" dossier claims in the hallucination check). Run the hallucination check and drop check queries from runbook 10. Especially valuable for affiliate marketing dossiers — fabricated product features create liability.
 
 ---
 

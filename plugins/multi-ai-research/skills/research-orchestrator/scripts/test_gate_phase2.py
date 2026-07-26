@@ -587,15 +587,49 @@ class GatePhase2Tests(unittest.TestCase):
             "## The repository could not be accessed\n"
             "The retry hook is ABSENT.",
             "I could not access the repository.\n## Retry hook: ABSENT",
+            # Adversarial verification of the first PR-review fix: clause
+            # boundaries spelled without the five listed punctuation marks
+            # still defeated the governance window.
+            "I could not access the repository. I cannot claim the feature "
+            "is present - it is ABSENT.",
+            # ...the meta regex's own 60-char gap crossed ';'/':' and paired a
+            # clause-1 negation with a clause-2 affirmative report verb...
+            "I could not access the repository. The retrieved docs do not "
+            "mention it; I state the feature is ABSENT.",
+            # ...and coordinating conjunctions carried governance across a
+            # semantic clause boundary.
+            "I could not access the repository. The docs do not state a "
+            "rate limit and the retry hook is ABSENT.",
+            # The bracket exemption is for the sanctioned [UNVERIFIED ...]
+            # downgrade only — bracketing the verdict itself is not a tag.
+            "I could not access the repository. Retry hook: [ABSENT].",
+            # Bold-style headings (accepted by C2's _H_PRE and used by the
+            # shipped pass_paren_bold_headings.md) are boundaries and claims
+            # too: a sources link must not bleed across one, and a verdict
+            # written as a bold title is not exempted by a cited neighbor.
+            "I could not fetch the repository files.\n"
+            "Useful link: https://example.org/a\n**Coverage gaps**\n"
+            "The retry hook is ABSENT.",
+            "I could not access the repository.\n**Retry hook: ABSENT**\n"
+            "Context at https://example.org/notes.",
         ]
         clean = [
             # The bound meta exemption still exempts a verdict its negation
             # actually governs, across a semicolon-joined sentence.
             "I could not clone the repo; never report NOT FOUND without "
             "evidence.",
+            # Inverted meta order: the verdict as subject of a negated report
+            # verb is a statement about the rule, not a verdict.
+            "I could not access the repository. ABSENT is not a verdict I am "
+            "willing to record; all claims are [UNVERIFIED - could not "
+            "access].",
             # Heading retention must not manufacture an admission from a
             # mandated heading's source noun.
             "## Sources consulted\nI could not access the repository archive. "
+            "All claims are [UNVERIFIED - could not access].",
+            # A bare-style section title (also C2-sanctioned) is a boundary
+            # block, not prose glued into the admission.
+            "Sources consulted\nI could not reach the repository archive. "
             "All claims are [UNVERIFIED - could not access].",
             "I cannot agree with the sources' interpretation; direct code "
             "inspection confirms Retry hook: ABSENT.",

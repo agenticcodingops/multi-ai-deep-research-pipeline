@@ -12,7 +12,7 @@ mid-run top-up) produced 35 process findings; the 19 MAJOR are fixed here. The
 dominant class was **silent failure** — gates reporting PASS on the wrong question —
 and the second was **no sanctioned route** for anything arriving after its phase had
 closed. Methodology docs 00, 01 and 13 go to v1.4. Suites: orchestrator 80 → 155,
-builder 216 → 229.
+builder 216 → 230.
 
 **This release was itself adversarially reviewed before export**, and the review
 found twelve material defects in the first cut of these fixes — several of them the
@@ -86,11 +86,19 @@ mechanism, prove its test goes red).
   exempts negated meta-statements ("it would be wrong to report ABSENT"), the
   bracketed UNVERIFIED form, and absence claims carrying their own citation —
   inability to reach source A no longer invalidates an absence evidenced from
-  source B. The PR review then hardened it twice more: heading text is scanned as a
-  claim (an admission or verdict written as a section title used to vanish with the
-  heading boundary), and the meta exemption binds to the verdict token it governs —
-  "I cannot claim it is present; it is ABSENT" no longer exempts the affirmative
-  ABSENT because an unrelated negation shares its sentence.
+  source B. The PR review — and an adversarial refutation pass over the PR-review
+  fixes themselves — then hardened it further: heading text is scanned as a claim in
+  every heading style C2 sanctions (ATX, whole-line bold, bare section titles; setext
+  underlines and rules are boundaries), so an admission or verdict written as a
+  section title no longer vanishes with the heading boundary and a sources link no
+  longer bleeds across a bold title; the meta exemption binds to the verdict token it
+  governs, in both orders ("never report ABSENT" and "ABSENT is not a verdict I will
+  record"), with clause breaks including dashes, parentheses, ellipses, and
+  coordinating conjunctions; and the bracket exemption accepts only the sanctioned
+  `[UNVERIFIED ...]` downgrade — "[ABSENT]" is a verdict, not a tag. Known fail-closed
+  costs, accepted deliberately: an absence-flavoured section title whose evidence
+  lives in the body below it, and comma-aside meta phrasings ("it would be wrong to
+  report, without direct evidence, ABSENT"), now cost a re-run.
 - **PF-20 / PF-21 — C1's echo diagnostic, and the death of marker repair.** The
   diagnostic defect stands as found: mandated section headings appear in prompt and
   answer by construction, so every clean-but-unmarked export was reported as an echo;
@@ -124,7 +132,12 @@ active configuration, and a fenced fake heading could hide the real section) —
 after the PR review the scan is left to right, whichever opener comes first claiming
 text through its own closer, so a stray ``` inside a comment (or a `<!--` inside a
 fence) is inert instead of poisoning the mask through EOF and hiding the real
-configuration from both the validator and merge-config. The
+configuration from both the validator and merge-config (the scanner survived a
+26,840-input parity fuzz against an independent oracle). merge-config also enforces
+MERGED-means-ACTIVE: it re-masks the merged text before writing and refuses
+(`MERGE_WOULD_HIDE`, no write) when an insert anchor would land an entry inside an
+unterminated fence or comment — previously that path reported MERGED with the entry
+invisible, and every re-run appended another hidden duplicate. The
 secret scan runs over the **whole raw file** — comments, fences, and legacy values
 included, with every match redacted so no report echoes the credential it is flagging
 — duplicate JSON keys are rejected exactly as the approved writer rejects them, and
@@ -144,9 +157,15 @@ top-up appends a `## Top-up delta` section to the conflict map, records whether 
 post-top-up evidence changes the draft recommendation, and — when it does and a
 blocking mode was selected — re-runs each affected mode once against the updated draft
 before Phase 5 (per selected mode, per top-up: a top-up that invalidates both Debate
-and Red Team refreshes both, never either twice). Superseded outputs are preserved as
-`.superseded-<n>.md` audit copies whose name still matches a bare `04a-redteam-*`
-pattern — so every consumer names the exclusion instead of trusting a glob. Without
+and Red Team refreshes both, never either twice). A Debate refresh has its own
+mechanics — the Phase-1 debate entries encode the old decision statement, so they are
+amended via the re-gate rule and re-gated, the outputs pass `--expect debate:` and
+Steps 4.2–4.4 URL verification — because a refreshed round's citations post-date
+Phase 4 and pass through no other check. Superseded rounds are preserved by renaming
+first (rename, never copy: the canonical name only ever holds the current round) as
+`.superseded-<n>.md` audit copies whose names still match the bare `04a-redteam-*` /
+`02b-debate-*` patterns — so every consumer names the exclusion instead of trusting a
+glob, and runbook 11's NotebookLM corpus sweep now says current-rounds-only. Without
 this, a
 cost-gap top-up could flip the recommendation from A to B after Red Team had attacked
 A, and Phase 5 would proceed with the blocking mode having run on the wrong question.
