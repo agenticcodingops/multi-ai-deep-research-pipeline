@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Gate checker for Phase 2 lane outputs (checks C1-C7).
+"""Gate checker for Phase 2 lane outputs (checks C1-C8).
 
 Gates each 02-<lane>.md / 02b-debate-<lane>.md file: echo/answer split, the
 six required sections (or six debate elements), confidence tags, citations,
-hidden-markup concealment, claims-vs-delivery, and echo share.
+hidden-markup concealment, claims-vs-delivery, echo share, and — for debate
+outputs — that the side argued is the side the staged prompt assigned.
 
 Pipeline per file: normalize -> mask code fences and autolinks for parsing ->
 one HTML scan collecting hidden regions, comments, and tag markup -> "scan"
@@ -22,7 +23,7 @@ import sys
 import unicodedata
 from html.parser import HTMLParser
 
-CHECKS = ["C1", "C2", "C3", "C4", "C5", "C6", "C7"]
+CHECKS = ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"]
 MIN_DEBATE_URLS = 2
 SENTINEL_RE = re.compile(r"(?m)^\s*===BEGIN LANE OUTPUT===\s*$")
 URL_RE = re.compile(r"https?://[^\s<>\)\]\"']+")
@@ -67,10 +68,26 @@ SECTION_PHRASES = {"tldr": "tl;dr", "findings": "findings section",
                    "conflicts": "conflicts and uncertainties",
                    "wwc": "what would change", "sources": "sources consulted",
                    "gaps": "coverage gap"}
+# A position line must NAME the side. The old pattern matched any short line
+# containing the word "position", so "## Position statement" with no FOR or
+# AGAINST anywhere passed — defeating the defining property of the mode, since
+# nothing downstream could then verify the assignment was honoured. Reuses the
+# heading prefix idiom so "## Position: FOR", "(1) POSITION STATEMENT — FOR:",
+# a bare "Position: FOR" and blockquoted forms all count. The separator class
+# is kept in step with validate_phase1.DEFERRED_STANDING[2.5]'s Position needle.
+DEBATE_POSITION_RE = re.compile(
+    u"(?im)" + _H_PRE +
+    u"position(?:[ \\t]+statement)?[ \\t]*(?:[:\u2013\u2014-]|\\()[ \\t]*"
+    u"(FOR|AGAINST)\\b")
+SIDE_WORD_RE = re.compile(r"(?<![A-Za-z])(FOR|AGAINST)(?![A-Za-z])")
+SIDE_ASSIGN_LINE_RES = [
+    re.compile(u"(?i)" + _H_PRE +
+               u"position(?:[ \\t]+statement)?[ \\t]*(?:[:\u2013\u2014-]|\\()"),
+    re.compile(r"(?i)\bassigned\b[^\n]{0,30}\bposition\b"),
+    re.compile(r"(?i)\bwrite[ \t]+exactly[ \t]+position[ \t]*:"),
+]
 DEBATE_ELEMENTS = [
-    ("position", re.compile(
-        r"(?im)^[^\n]{0,30}\bposition\b[^\n]{0,60}$|\bposition[ \t]*:"
-        r"|^[^\n]{0,40}\bposition[ \t]+statement\b[^\n]*$")),
+    ("position", DEBATE_POSITION_RE),
     ("evidence/reasoning", re.compile(r"(?i)\bevidence\b|\breasoning\b")),
     ("rebuttal", re.compile(r"(?i)\brebutt(?:al|ing)\b|\bcounter[- ]argument\b")),
     ("flip-fact", re.compile(
@@ -80,6 +97,7 @@ DEBATE_ELEMENTS = [
 ]
 OUT_NAME_RES = [("initial", re.compile(r"^02-([a-z0-9_-]+)\.md$")),
                 ("debate", re.compile(r"^02b-debate-([a-z0-9_-]+)\.md$"))]
+EXPECT_LANE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input",
              "link", "meta", "param", "source", "track", "wbr"}
 HIDDEN_NAME_SET = {"hidden", "sr-only", "visually-hidden", "screen-reader"}
@@ -316,41 +334,316 @@ def _scan_html(parse_input):
     return scanner
 
 
-def _split_boundary(scan, prompt_norm, prompt_exists):
-    """Return (method, answer_offset, failure_message_or_None). Fails closed."""
-    sentinel = None
-    for match in SENTINEL_RE.finditer(scan):
-        sentinel = match
-    if sentinel is not None:
-        return "sentinel", sentinel.end(), None
-    usable = prompt_exists and bool(prompt_norm and prompt_norm.strip())
-    if not usable:
-        return "whole-file", 0, None
-    tail_lines = [ln.strip() for ln in prompt_norm.splitlines() if ln.strip()]
-    tail = tail_lines[-1] if tail_lines else ""
-    if len(tail) >= 12 and scan.count(tail) == 1:
-        index = scan.find(tail)
-        return "prompt-tail", index + len(tail), None
-    probes = [ln.strip() for ln in prompt_norm.splitlines() if len(ln.strip()) >= 20]
-    echoed = sum(1 for probe in probes if probe in scan)
-    prompt_line_set = set(tail_lines)
+def _is_mandated_heading(line):
+    """True for a line that is one of the six required section headings.
+
+    These appear in the staged prompt AND in every correct answer by
+    construction — and a multi-assignment prompt file repeats them once per
+    assignment — so they carry zero information about whether a lane echoed
+    the prompt."""
+    return any(rx.match(line) for _key, _label, rx in SECTION_RES)
+
+
+_NO_ECHO = {"prompt_lines_matched": 0, "longest_contiguous_run": 0,
+            "leading_lines_matched": 0, "prompt_shingle_coverage": 0.0}
+# Renderer prefixes a re-render can add to an echoed line: blockquote markers,
+# bullet/number markers. Stripped before comparison so a blockquoted echo of the
+# staged prompt cannot masquerade as original prose.
+_LINE_PREFIX_RE = re.compile(u"^(?:>+[ \\t]*|[-*•][ \\t]+|\\d{1,3}[.)][ \\t]+)+")
+_WORD_STRIP = u".,;:!?()[]{}\"'`>*_—–…"
+_SHINGLE_K = 8          # words per shingle for reflow-proof echo comparison
+_SHINGLE_FLOOR = 12     # below this many prompt shingles, line metrics only
+_COVERAGE_LIMIT = 0.25  # prompt-shingle coverage that counts as echo
+
+
+def _canon_line(line):
+    """Casefolded, prefix-stripped, whitespace-collapsed, end-punct-stripped.
+
+    Defeats the cheap re-render transformations an export can apply to an
+    echoed prompt line: blockquoting, list markers, case tweaks, a changed
+    final punctuation mark."""
+    line = _LINE_PREFIX_RE.sub("", line.strip())
+    line = re.sub(u"[ \\t.,;:!?…]+$", "", line)
+    return " ".join(line.split()).casefold()
+
+
+def _word_stream(lines):
+    """Punctuation-stripped, casefolded word sequence for shingle comparison."""
+    words = []
+    for line in lines:
+        for token in line.split():
+            token = token.strip(_WORD_STRIP).casefold()
+            if token:
+                words.append(token)
+    return words
+
+
+def _shingle_set(words, k=_SHINGLE_K):
+    return {tuple(words[i:i + k]) for i in range(len(words) - k + 1)}
+
+
+def _echo_metrics(region_lines, own_prompt_lines, prompt_shingles):
+    """Line- and shingle-level echo measurements of a text region.
+
+    Line comparison is canonical (prefix/punct/case-proof); shingles catch a
+    prompt reflowed across different line boundaries, which no line-by-line
+    comparison can see."""
+    probes = {_canon_line(ln) for ln in own_prompt_lines
+              if len(_canon_line(ln)) >= 20}
+    prompt_line_set = {_canon_line(ln) for ln in own_prompt_lines}
+    prompt_line_set.discard("")
+    canon_region = [_canon_line(ln) for ln in region_lines if ln.strip()]
+    canon_region = [ln for ln in canon_region if ln]
+    echoed = sum(1 for ln in set(canon_region) if ln in probes)
+    run = best = 0
+    for line in canon_region:
+        run = run + 1 if line in probes else 0
+        best = max(best, run)
     prefix = 0
-    for line in scan.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped in prompt_line_set:
+    for line in canon_region:
+        if line in prompt_line_set:
             prefix += 1
         else:
             break
-    if echoed or prefix:
+    coverage = 0.0
+    if len(prompt_shingles) >= _SHINGLE_FLOOR:
+        region_shingles = _shingle_set(_word_stream(region_lines))
+        coverage = len(prompt_shingles & region_shingles) / len(prompt_shingles)
+    return {"prompt_lines_matched": echoed, "longest_contiguous_run": best,
+            "leading_lines_matched": prefix,
+            "prompt_shingle_coverage": round(coverage, 3)}
+
+
+def _prompt_echo_parts(prompt_norm):
+    """(non-heading prompt lines, their shingle set) for echo comparison."""
+    prompt_lines = [ln.strip() for ln in prompt_norm.splitlines() if ln.strip()]
+    own = [ln for ln in prompt_lines if not _is_mandated_heading(ln)]
+    return own, _shingle_set(_word_stream(own))
+
+
+def _is_echo(metrics):
+    return (metrics["leading_lines_matched"] > 0
+            or metrics["longest_contiguous_run"] >= 2
+            or metrics["prompt_lines_matched"] >= 3
+            or metrics["prompt_shingle_coverage"] >= _COVERAGE_LIMIT)
+
+
+def _split_boundary(scan, prompt_norm, prompt_exists):
+    """Return (method, answer_offset, failure_message_or_None, echo_metrics).
+
+    Fails closed. The metrics are diagnostic only — there is no sanctioned way
+    to reattach a missing sentinel, because no detector can prove a negative
+    strongly enough to authorize a hand-drawn boundary (a blockquoted or
+    reflowed echo defeats exact-line comparison, and the v1.3.1 review
+    demonstrated exactly that forgery)."""
+    matches = list(SENTINEL_RE.finditer(scan))
+    if matches:
+        if len(matches) > 1:
+            # G6 forbids a standalone sentinel inside a staged prompt (including
+            # deferred debate/red-team templates), so an echo can never
+            # contribute one: more than one means more than one answer, and the
+            # split would silently discard all but the last.
+            return ("sentinel", matches[-1].end(),
+                    "lane emitted {0} sentinels; the split discarded {1} "
+                    "{2} — stage one assignment per lane file".format(
+                        len(matches), len(matches) - 1,
+                        "answer" if len(matches) == 2 else "answers"),
+                    dict(_NO_ECHO))
+        return "sentinel", matches[0].end(), None, dict(_NO_ECHO)
+    usable = prompt_exists and bool(prompt_norm and prompt_norm.strip())
+    if not usable:
+        return "whole-file", 0, None, dict(_NO_ECHO)
+    own, prompt_shingles = _prompt_echo_parts(prompt_norm)
+    tail = own[-1] if own else ""
+    if len(tail) >= 12 and scan.count(tail) == 1:
+        index = scan.find(tail)
+        return "prompt-tail", index + len(tail), None, dict(_NO_ECHO)
+    metrics = _echo_metrics(scan.splitlines(), own, prompt_shingles)
+    if _is_echo(metrics):
         return ("echo-backstop", 0,
-                "echo present, boundary indeterminate — re-export with the "
-                "sentinel ({0} prompt line(s) echoed, {1} leading line(s) match "
-                "the prompt)".format(echoed, prefix))
+                "echo present, boundary indeterminate — the lane restated the "
+                "prompt; re-run or re-export from the sentinel ({0} distinct "
+                "prompt line(s) echoed, longest contiguous run {1}, {2} leading "
+                "line(s) match the prompt, shingle coverage {3:.0%})".format(
+                    metrics["prompt_lines_matched"],
+                    metrics["longest_contiguous_run"],
+                    metrics["leading_lines_matched"],
+                    metrics["prompt_shingle_coverage"]),
+                metrics)
     return ("unsplit", 0,
-            "no sentinel and the staged prompt's final line not found; boundary "
-            "unverifiable — re-export with the sentinel")
+            "no sentinel and no prompt echo detected ({0} distinct prompt "
+            "line(s) matched, longest contiguous run {1}, shingle coverage "
+            "{2:.0%}) — the answer appears clean but its boundary marker is "
+            "missing, so the boundary unverifiable: re-run the lane (a dropped "
+            "marker cannot be safely reattached — a hand-drawn boundary is a "
+            "forgery C1 exists to prevent)".format(
+                metrics["prompt_lines_matched"],
+                metrics["longest_contiguous_run"],
+                metrics["prompt_shingle_coverage"]),
+            metrics)
+
+
+# --- PF-35: absence asserted from inability -------------------------------
+# An "access admission" is an inability-to-reach construction and a source noun
+# in the SAME sentence, in either order. The access-verb requirement is what
+# keeps "I cannot agree with the sources' interpretation" out.
+ACCESS_FAILURE_RE = re.compile(
+    r"(?i)(?:\b(?:could[ \t]*not|couldn't|can[ \t]*not|cannot|can't"
+    r"|was[ \t]+not[ \t]+able[ \t]+to|were[ \t]+not[ \t]+able[ \t]+to"
+    r"|unable[ \t]+to|failed[ \t]+to|did[ \t]+not[ \t]+manage[ \t]+to)"
+    r"[ \t]+(?:\w+[ \t]+){0,2}?"
+    r"(?:access|read|open|fetch|clone|reach|retrieve|load|browse|crawl"
+    r"|inspect|view|download|scrape|query)\b"
+    r"|\binaccessib\w+|\bunreachab\w+"
+    r"|\bcould[ \t]+not[ \t]+be[ \t]+(?:reached|accessed|fetched|read|opened"
+    r"|retrieved|loaded)\b"
+    r"|\baccess[ \t]+(?:was[ \t]+)?denied\b|\bdenied[ \t]+access[ \t]+to\b"
+    r"|\bno[ \t]+(?:direct[ \t]+)?access[ \t]+to\b"
+    r"|\bwithout[ \t]+access[ \t]+to\b|\black(?:ed|s)?[ \t]+access[ \t]+to\b)")
+SOURCE_NOUN_RE = re.compile(
+    r"(?i)\b(?:repositor(?:y|ies)|repo|codebase|source[ \t]+code|sources?"
+    r"|files?|urls?|links?|pages?|sites?|websites?|documents?|docs|pdfs?"
+    r"|papers?|apis?|endpoints?|fetch(?:er|ing)?|browse|crawl|internet|web"
+    r"|tool(?:ing|s)?|github)\b")
+ABSENCE_VERDICT_RE = re.compile(
+    u"(?i)(?<![A-Za-z])(?:absent|not[ \\t]*[-\u2010\u2011\u2012\u2013\u2014]?"
+    u"[ \\t]*(?:present|found))(?![A-Za-z])")
+# "it would be wrong to report ABSENT" is a meta-statement about the rule, not
+# a verdict; a bracketed [UNVERIFIED — could not access] is the sanctioned form.
+_ABSENCE_META_RE = re.compile(
+    r"(?i)\b(?:wrong|never|not|avoid|refus\w+|rather[ \t]+than|instead[ \t]+of"
+    r"|cannot|can't|must[ \t]+not|should[ \t]+not|would[ \t]+not|won't"
+    r"|will[ \t]+not|do(?:es)?[ \t]+not|don't)\b"
+    r"[^.!?\n]{0,60}?\b(?:report|say|state|mark|claim|assert|conclude|record"
+    r"|write|declare)\w*\b")
+_SENTENCE_SPLIT_RE = re.compile(r"[.!?]+(?:\s+|$)")
+# Clause punctuation between a meta negation's report verb and a verdict token
+# breaks governance: in "I cannot claim it is present; it is ABSENT" the
+# negation belongs to another clause and ABSENT is affirmative (PR review).
+_CLAUSE_BREAK_RE = re.compile(u"[;:,–—]")
+
+
+def _meta_governs(sentence, hit_start):
+    """True when a negation+report-verb construction governs the verdict token
+    at hit_start: the verb precedes it in the same clause, with no clause
+    punctuation between. A whole-sentence search exempted any verdict that
+    merely shared a sentence with an unrelated negation."""
+    for meta in _ABSENCE_META_RE.finditer(sentence):
+        if meta.end() <= hit_start and \
+                not _CLAUSE_BREAK_RE.search(sentence, meta.end(), hit_start):
+            return True
+    return False
+
+
+def _sentences(text):
+    """Sentence-ish units of a text region, with renderer prefixes stripped.
+
+    Lines are joined before splitting so ordinary wrapped prose stays one
+    sentence; bracketed tags are protected from the split so the sanctioned
+    '[UNVERIFIED — could not access]' outcome is never severed from its
+    sentence.
+
+    Blank lines and headings are hard boundaries \u2014 without them, a sources
+    list with no terminal periods bleeds into the next section's first
+    sentence, and its URLs would falsely exempt an absence verdict there.
+    A heading's own text is kept as a one-line block (PR review): an
+    admission or a verdict does not stop being a claim because it was
+    written as a section title."""
+    blocks = []
+    current = []
+    for raw in text.splitlines():
+        line = _LINE_PREFIX_RE.sub("", raw.strip())
+        if not line or line.lstrip().startswith("#"):
+            if current:
+                blocks.append(" ".join(current))
+                current = []
+            heading_text = line.lstrip("#").strip()
+            if heading_text:
+                blocks.append(heading_text)
+            continue
+        current.append(line)
+    if current:
+        blocks.append(" ".join(current))
+    sentences = []
+    for block in blocks:
+        protected = re.sub(
+            r"\[([^\[\]\n]{1,80})\]",
+            lambda m: "[" + m.group(1).replace(".", "\u2024") + "]", block)
+        sentences.extend(s.strip() for s in _SENTENCE_SPLIT_RE.split(protected)
+                         if s.strip())
+    return sentences
+
+
+def _absence_after_inability(text):
+    """(admission sentence, verdict sentence) when the answer both admits it
+    could not reach a source and rules a capability absent — or None.
+
+    The verdict must be an assertion: negated/meta statements ("it would be
+    wrong to report ABSENT"), the bracketed [UNVERIFIED — could not access]
+    form, and absence claims carrying their own https citation (evidence from
+    a source the lane COULD read) are all exempt."""
+    admission = None
+    verdict = None
+    for sentence in _sentences(text):
+        if admission is None and ACCESS_FAILURE_RE.search(sentence) and \
+                SOURCE_NOUN_RE.search(sentence):
+            admission = sentence
+        if verdict is None and "https://" not in sentence:
+            for hit in ABSENCE_VERDICT_RE.finditer(sentence):
+                start = sentence.rfind("[", 0, hit.start())
+                in_tag = start != -1 and "]" not in sentence[start:hit.start()]
+                if not in_tag and not _meta_governs(sentence, hit.start()):
+                    verdict = sentence
+                    break
+    if admission and verdict:
+        return admission, verdict
+    return None
+
+
+# --- Debate side extraction ------------------------------------------------
+
+def _line_sides(line):
+    return {m.group(1).upper() for m in SIDE_WORD_RE.finditer(line)}
+
+
+def _declared_sides(heading_answer):
+    """(sides declared by valid single-side position lines, ambiguous flag).
+
+    A position line naming BOTH sides ("Position: FOR or Position: AGAINST",
+    "Position: FOR/AGAINST") declares nothing — it is the unresolved template
+    choice, and treating its first token as the declared side is how a lane
+    that never picked a side used to pass."""
+    sides = set()
+    ambiguous = False
+    for line in heading_answer.splitlines():
+        if not DEBATE_POSITION_RE.search(line):
+            continue
+        found = _line_sides(line)
+        if len(found) == 1:
+            sides |= found
+        elif len(found) > 1:
+            ambiguous = True
+    return sides, ambiguous
+
+
+def _staged_side(prompt_norm):
+    """The single side a staged debate prompt assigns, or None.
+
+    A line naming exactly one side assigns it. A line naming BOTH sides is the
+    template's generic explanation of the format ("write exactly Position: FOR
+    or Position: AGAINST") and is ignored — it must never erase a separate
+    explicit assignment, which is exactly how C8 used to disable itself on the
+    shipped overlay wording."""
+    if not prompt_norm:
+        return None
+    sides = set()
+    for line in prompt_norm.splitlines():
+        if not any(rx.search(line) for rx in SIDE_ASSIGN_LINE_RES):
+            continue
+        found = _line_sides(line)
+        if len(found) == 1:
+            sides |= found
+    return sides.pop() if len(sides) == 1 else None
 
 
 def _classify(name):
@@ -367,6 +660,50 @@ def _prompt_name(kind, lane):
     return "02a-prompts-{0}.md".format(lane)
 
 
+def _parse_expect(raw):
+    """'debate:grok,perplexity' -> ordered, de-duplicated 'kind:lane' tokens.
+
+    A bare id means the initial fan-out output (02-<lane>.md); 'debate:<id>'
+    means the Phase-2.5 output (02b-debate-<lane>.md). Lane ids collide across
+    kinds, so the prefix is what distinguishes them — and a bare id must never
+    be satisfied by a debate file, since that collision is what this flag
+    exists to catch.
+
+    Malformed manifests are usage errors, never silently narrowed: an empty
+    component means a lane id was lost in shell quoting or list assembly, and
+    dropping it would convert the completeness contract into best-effort."""
+    if raw is None:
+        return []
+    if not raw.strip():
+        raise GateUsageError(
+            "--expect: empty manifest — name every lane that must have an "
+            "output, or omit the flag")
+    tokens = []
+    for chunk in raw.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            raise GateUsageError(
+                "--expect: empty component in {0!r} — a lane id was lost; fix "
+                "the manifest rather than letting the gate narrow it".format(raw))
+        if ":" in chunk:
+            kind, _sep, lane = chunk.partition(":")
+            kind, lane = kind.strip().lower(), lane.strip()
+            if kind not in ("initial", "debate"):
+                raise GateUsageError(
+                    "--expect: unknown kind {0!r} in {1!r}; use '<lane>' or "
+                    "'debate:<lane>'".format(kind, chunk))
+        else:
+            kind, lane = "initial", chunk
+        if not EXPECT_LANE_RE.match(lane):
+            raise GateUsageError(
+                "--expect: {0!r} is not a lane id (lowercase a-z0-9_- slug)"
+                .format(chunk))
+        token = "{0}:{1}".format(kind, lane)
+        if token not in tokens:
+            tokens.append(token)
+    return tokens
+
+
 def collect_targets(paths, prompts_dir=None, prompt_file=None):
     if prompts_dir is not None and not os.path.isdir(prompts_dir):
         raise GateUsageError("--prompts-dir is not a directory: {0}".format(prompts_dir))
@@ -378,13 +715,16 @@ def collect_targets(paths, prompts_dir=None, prompt_file=None):
             for name in sorted(os.listdir(path)):
                 kind, lane = _classify(name)
                 if kind is not None:
-                    targets.append((os.path.join(path, name), kind, lane))
+                    targets.append((os.path.join(path, name), kind, lane, True))
         elif os.path.isfile(path):
             kind, lane = _classify(os.path.basename(path))
+            canonical = kind is not None
             if kind is None:
+                # Ad-hoc: gate the file, but it can never stand in for a
+                # canonically named lane output in a completeness manifest.
                 kind = "initial"
                 lane = os.path.splitext(os.path.basename(path))[0]
-            targets.append((path, kind, lane))
+            targets.append((path, kind, lane, canonical))
         else:
             raise GateUsageError("path not found: {0}".format(path))
     if not targets:
@@ -393,14 +733,15 @@ def collect_targets(paths, prompts_dir=None, prompt_file=None):
     if prompt_file is not None and len(targets) != 1:
         raise GateUsageError("--prompt is only valid with a single output file")
     resolved = []
-    for out_path, kind, lane in targets:
+    for out_path, kind, lane, canonical in targets:
         if prompt_file is not None:
             candidate = prompt_file
         else:
             base = prompts_dir if prompts_dir else os.path.dirname(os.path.abspath(out_path))
             candidate = os.path.join(base, _prompt_name(kind, lane))
         resolved.append((out_path, kind, lane,
-                         candidate if os.path.isfile(candidate) else None))
+                         candidate if os.path.isfile(candidate) else None,
+                         canonical))
     return resolved
 
 
@@ -505,7 +846,7 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
         checks[check]["details"].append(message)
 
     # C1: echo/answer split (fails closed on an unverifiable boundary)
-    method, offset, boundary_error = _split_boundary(
+    method, offset, boundary_error, echo_diag = _split_boundary(
         scan, prompt_norm, prompt_path is not None)
     if boundary_error:
         fail("C1", boundary_error)
@@ -515,6 +856,26 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
     if answer_chars < opts["min_answer_chars"]:
         fail("C1", "answer region {0} content chars, below the minimum {1}".format(
             answer_chars, opts["min_answer_chars"]))
+    # Echo INSIDE the answer region, whatever established the boundary. The
+    # contract puts the sentinel before any restatement, so staged-prompt
+    # material after the boundary means either the lane restated the prompt
+    # after the marker or someone drew the boundary by hand above an echo —
+    # the forgery the v1.3.1 review demonstrated against marker repair.
+    if boundary_error is None and offset > 0 and prompt_norm and \
+            prompt_norm.strip():
+        own, prompt_shingles = _prompt_echo_parts(prompt_norm)
+        region = _echo_metrics(answer_scan.splitlines(), own, prompt_shingles)
+        echo_diag = region
+        if (region["longest_contiguous_run"] >= 2
+                or region["prompt_lines_matched"] >= 3
+                or region["prompt_shingle_coverage"] >= _COVERAGE_LIMIT):
+            fail("C1", "staged prompt echoed inside the answer region ({0} "
+                       "line(s), longest run {1}, shingle coverage {2:.0%}) — "
+                       "the boundary is forged or the lane restated the prompt "
+                       "after the marker; re-run or re-export the lane".format(
+                           region["prompt_lines_matched"],
+                           region["longest_contiguous_run"],
+                           region["prompt_shingle_coverage"]))
     checks["C1"]["details"].insert(
         0, "split={0}; answer={1:,} chars".format(method, answer_chars))
 
@@ -522,11 +883,27 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
     findings_content = None
     findings_count = 0
 
+    declared_sides = set()
+    ambiguous_sides = False
+
     if kind == "debate":
         # C2 slot: the six debate elements
         for name, rx in DEBATE_ELEMENTS:
+            if name == "position":
+                continue
             if not rx.search(heading_answer):
                 fail("C2", "missing debate element '{0}'".format(name))
+        # Position element: at least one line declaring exactly ONE side. A
+        # line naming both ("Position: FOR or Position: AGAINST") is the
+        # unresolved template choice, not a declaration.
+        declared_sides, ambiguous_sides = _declared_sides(heading_answer)
+        if not declared_sides:
+            if ambiguous_sides:
+                fail("C2", "position line names both FOR and AGAINST — the "
+                           "lane copied the template's choice instead of "
+                           "declaring its assigned side")
+            else:
+                fail("C2", "missing debate element 'position'")
         # C3 slot: at least one [REASONED] tag
         if not REASONED_RE.search(answer_scan):
             fail("C3", "missing [REASONED] tag in the debate answer")
@@ -672,6 +1049,18 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
             labels = [label for key, label, _rx in SECTIONS if key in which]
             fail("C6", "claims delivery of sections the structural check cannot "
                        "find: {0}".format(", ".join(labels)))
+        # Absence asserted from inability. heading_answer, not answer_scan: code
+        # fences are already masked there, so a lane quoting a "404 NOT FOUND"
+        # log inside a fence cannot trip it.
+        hit = _absence_after_inability(heading_answer)
+        if hit:
+            admission, verdict = hit
+            fail("C6", "claims a capability absent after stating its source was "
+                       "unreachable: \"{0}\" alongside \"{1}\" — an unreachable "
+                       "source cannot support an absence finding; re-run the "
+                       "lane with working access, or downgrade every absence to "
+                       "[UNVERIFIED — could not access]".format(
+                           verdict[:90], admission[:90]))
 
     # C7: echo share
     if offset > 0 and len(scan) > 0:
@@ -679,6 +1068,43 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
         checks["C7"]["details"].append("echo share {0:.0%}".format(share))
         if share > 0.60:
             warn("C7", "echoed prompt is {0:.0%} of the file".format(share))
+
+    # C8: the declared side matches the side the staged prompt assigned.
+    # "A side is stated" is what C2 checks; this is "the ASSIGNED side was
+    # argued" — the property the mode actually requires, and the only thing
+    # that distinguishes a complying lane from one that argued its own
+    # preferred opinion.
+    if kind != "debate":
+        checks["C8"]["status"] = "-"
+        checks["C8"]["details"].append("not applicable to initial outputs")
+    else:
+        assigned = _staged_side(prompt_norm)
+        if prompt_norm is None or not prompt_norm.strip():
+            checks["C8"]["status"] = "-"
+            checks["C8"]["details"].append(
+                "no staged prompt found; assignment unverifiable")
+        elif assigned is None:
+            # A staged debate prompt with no unique assigned side is a staging
+            # defect, not a not-applicable case: position-assigned debate IS
+            # the assignment, and Step 2.5 stages one complete entry per side.
+            fail("C8", "staged debate prompt assigns no single side — stage "
+                       "the side-specific entry (Step 2.5), never the "
+                       "unresolved template")
+        elif not declared_sides:
+            checks["C8"]["status"] = "-"
+            checks["C8"]["details"].append(
+                "no position line names a side (C2 owns that failure)")
+        elif len(declared_sides) > 1:
+            fail("C8", "output declares both FOR and AGAINST; the staged "
+                       "prompt assigned {0}".format(assigned))
+        elif declared_sides != {assigned}:
+            fail("C8", "output argues {0} but the staged prompt assigned {1} "
+                       "— the lane swapped sides, so one side of this debate "
+                       "was never argued".format(
+                           sorted(declared_sides)[0], assigned))
+        else:
+            checks["C8"]["details"].append(
+                "position {0} matches the staged assignment".format(assigned))
 
     failed = any(checks[c]["status"] == "FAIL" for c in CHECKS)
     return {
@@ -688,6 +1114,7 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
         "prompt_path": prompt_path,
         "split_method": method,
         "answer_chars": answer_chars,
+        "echo_diagnostics": echo_diag,
         "notes": notes,
         "checks": checks,
         "result": "fail" if failed else "pass",
@@ -695,28 +1122,42 @@ def gate_file(out_path, kind, lane, prompt_path, opts):
 
 
 def run(paths, prompts_dir=None, prompt_file=None, min_findings=3,
-        min_answer_chars=1500, url_ratio=0.5, check_urls=False):
+        min_answer_chars=1500, url_ratio=0.5, check_urls=False, expect=None):
     """Gate the given lane outputs and return the report dict."""
     opts = {"min_findings": min_findings, "min_answer_chars": min_answer_chars,
             "url_ratio": url_ratio, "check_urls": check_urls}
+    expected = _parse_expect(expect)
     targets = collect_targets(paths, prompts_dir, prompt_file)
     files = []
-    for out_path, kind, lane, prompt in targets:
+    for out_path, kind, lane, prompt, canonical in targets:
         try:
-            files.append(gate_file(out_path, kind, lane, prompt, opts))
+            record = gate_file(out_path, kind, lane, prompt, opts)
         except Exception as exc:
             checks = {c: {"status": "PASS", "details": []} for c in CHECKS}
             checks["C1"] = {"status": "FAIL",
                             "details": ["internal error: {0}: {1}".format(
                                 exc.__class__.__name__, exc)]}
-            files.append({"path": out_path, "kind": kind, "lane": lane,
-                          "prompt_path": prompt, "split_method": "error",
-                          "answer_chars": 0, "notes": [], "checks": checks,
-                          "result": "fail"})
+            record = {"path": out_path, "kind": kind, "lane": lane,
+                      "prompt_path": prompt, "split_method": "error",
+                      "answer_chars": 0, "echo_diagnostics": dict(_NO_ECHO),
+                      "notes": [], "checks": checks, "result": "fail"}
+        record["canonical"] = canonical
+        if not canonical:
+            record["notes"] = record.get("notes", []) + [
+                "non-canonical filename gated ad hoc; does not satisfy --expect"]
+        files.append(record)
     failed_lanes = sum(1 for f in files if f["result"] == "fail")
+    # Only files under their CANONICAL name satisfy the manifest. An explicitly
+    # passed non-conventional file is gated ad hoc, but 02-<lane>.md still has
+    # to exist — otherwise `x.md --expect x` silently satisfies "lane x ran".
+    found = {"{0}:{1}".format(f["kind"], f["lane"])
+             for f in files if f.get("canonical", True)}
+    missing = [token for token in expected if token not in found]
     return {
-        "result": "fail" if failed_lanes else "pass",
+        "result": "fail" if (failed_lanes or missing) else "pass",
         "failed_lanes": failed_lanes,
+        "expected": expected,
+        "missing": missing,
         "files": files,
     }
 
@@ -727,6 +1168,16 @@ def render_human(report):
         lines.append("File: {0}".format(entry["path"]))
         lines.append("Lane: {0}  split={1}  answer={2:,} chars".format(
             entry["lane"], entry["split_method"], entry["answer_chars"]))
+        if entry["split_method"] in ("echo-backstop", "unsplit"):
+            diag = entry["echo_diagnostics"]
+            # Diagnostic only — these numbers authorize nothing. There is no
+            # sanctioned way to reattach a missing sentinel.
+            lines.append("  echo diagnostics: {0} staged-prompt line(s) "
+                         "matched, longest contiguous run {1}, shingle "
+                         "coverage {2:.0%}".format(
+                             diag["prompt_lines_matched"],
+                             diag["longest_contiguous_run"],
+                             diag["prompt_shingle_coverage"]))
         for note in entry["notes"]:
             lines.append("  note: {0}".format(note))
         for check in CHECKS:
@@ -734,6 +1185,18 @@ def render_human(report):
             detail = "; ".join(state["details"])
             lines.append("  {0} {1}{2}".format(
                 check, state["status"], "  " + detail if detail else ""))
+        lines.append("")
+    if report.get("expected"):
+        # Printed unconditionally: the matrix below only renders for more than
+        # one file, which is exactly the case that does not hold when four of
+        # five lanes are missing.
+        lines.append("Expected {0} lane output(s); found {1}; missing {2}.".format(
+            len(report["expected"]),
+            len(report["expected"]) - len(report["missing"]),
+            len(report["missing"])))
+        for token in report["missing"]:
+            lines.append("MISSING {0}: expected lane {1} has no output file"
+                         .format(token, token.split(":", 1)[1]))
         lines.append("")
     if len(report["files"]) > 1:
         names = [entry["lane"] for entry in report["files"]]
@@ -747,8 +1210,12 @@ def render_human(report):
     if report["result"] == "pass":
         lines.append("RESULT: PASS")
     else:
+        detail = "{0} lane failures".format(report["failed_lanes"])
+        if report.get("missing"):
+            detail += ", {0} missing lane output(s)".format(
+                len(report["missing"]))
         lines.append("RESULT: FAIL — do not proceed to Phase 3 "
-                     "({0} lane failures)".format(report["failed_lanes"]))
+                     "({0})".format(detail))
     return "\n".join(lines)
 
 
@@ -779,7 +1246,7 @@ def _pos_ratio(value):
 def main(argv):
     parser = argparse.ArgumentParser(
         prog="gate_phase2",
-        description="Gate Phase 2 lane outputs (checks C1-C7).")
+        description="Gate Phase 2 lane outputs (checks C1-C8).")
     parser.add_argument("paths", nargs="+",
                         help="lane output files or directories to gate")
     parser.add_argument("--prompts-dir", dest="prompts_dir", default=None,
@@ -793,13 +1260,18 @@ def main(argv):
     parser.add_argument("--url-ratio", type=_pos_ratio, default=0.5)
     parser.add_argument("--check-urls", action="store_true",
                         help="HEAD-request each URL; failures are warnings only")
+    parser.add_argument("--expect", dest="expect", default=None,
+                        help="comma-separated lane ids that MUST have an output "
+                             "file; a bare id means 02-<lane>.md, "
+                             "'debate:<id>' means 02b-debate-<lane>.md")
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
         return 0 if exc.code in (0, None) else 2
     try:
         report = run(args.paths, args.prompts_dir, args.prompt, args.min_findings,
-                     args.min_answer_chars, args.url_ratio, args.check_urls)
+                     args.min_answer_chars, args.url_ratio, args.check_urls,
+                     args.expect)
     except (GateUsageError, OSError) as exc:
         sys.stderr.write("error: {0}\n".format(exc))
         return 2

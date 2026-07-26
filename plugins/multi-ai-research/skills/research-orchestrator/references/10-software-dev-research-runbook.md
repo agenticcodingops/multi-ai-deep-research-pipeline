@@ -219,7 +219,7 @@ The second is faster if you have many tabs open.
 
 ### Pre-Phase-3 sanity checks (3 minutes — non-negotiable)
 
-Before triggering Phase 3, open each `02-*.md` file and verify:
+Before triggering Phase 3, open each `02-<lane>.md` lane output (and `02-topup-<lane>.md` where a top-up ran — never a `02-<lane>.raw-export.md` audit copy) and verify:
 
 1. **No truncation.** Deep Research outputs occasionally cut off mid-paragraph. If truncated, re-run that agent.
 2. **Required structure present.** TL;DR, findings with URLs, "what would change your recommendation," "what this answer does NOT cover" — these are the four sections the improved prompts demanded.
@@ -369,7 +369,7 @@ format block, with these additional instructions:
 the implementation guide's 9-section structure rather than the standard ADR 
 shape. State any deviation here.]
 
-[Paste all 02-*.md, 03-conflict-map.md, 04-verified-sources.md, 04-rejected.md 
+[Paste every 02-<lane>.md and 02-topup-<lane>.md — never a 02-<lane>.raw-export.md audit copy — plus 03-conflict-map.md, 04-verified-sources.md, 04-rejected.md
 inline below.]
 ```
 
@@ -405,7 +405,7 @@ After Phase 5, before Phase 6.
 2. Create a new notebook for this project.
 3. Upload as sources:
    - The input files (requirements, alignment report, implementation guide if any)
-   - All `02-*.md` agent outputs
+   - Every `02-<lane>.md` and `02-topup-<lane>.md` agent output (never a `02-<lane>.raw-export.md` audit copy — it would enter the corpus as a duplicate lane)
    - `03-conflict-map.md`
    - `04-verified-sources.md`
    - `05-dossier.md`
@@ -554,7 +554,7 @@ then proceed to Phase 1.
 
 ```
 Phase 2 fan-out is complete. The N agent outputs are saved at:
-- <list all 02-*.md paths>
+- <list every 02-<lane>.md and 02-topup-<lane>.md path; exclude any 02-<lane>.raw-export.md>
 
 Resume the research-orchestrator skill at Phase 3.
 
@@ -588,7 +588,7 @@ dev output format from 02-overlay-spec-driven-dev.md.
 
 [Project-specific output format adjustments]
 
-[Paste all inputs inline below — 02-*.md, 03-conflict-map.md, 
+[Paste all inputs inline below — every 02-<lane>.md and 02-topup-<lane>.md (never a raw-export audit copy), 03-conflict-map.md,
 04-verified-sources.md, 04-rejected.md]
 ```
 
@@ -598,7 +598,7 @@ dev output format from 02-overlay-spec-driven-dev.md.
 Query 1: For each numbered claim in 05-dossier.md, identify which uploaded 
 source supports it. Flag any claim that cannot be traced to an uploaded source.
 
-Query 2: What's in the agent outputs (02-*) that did NOT make it into the 
+Query 2: What's in the agent outputs (the 02-<lane>.md files) that did NOT make it into the
 dossier? Highlight any material claim that was dropped.
 ```
 

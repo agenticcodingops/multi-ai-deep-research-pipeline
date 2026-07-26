@@ -495,6 +495,165 @@ class OrchestratorDriftTests(unittest.TestCase):
         for state in ("unknown", "available", "unavailable"):
             self.assertIn(state, text)
 
+    def test_orchestrator_remediation_steps_named(self):
+        # The late-arrival family and the v1.4 verification vocabulary are
+        # procedure, so no runtime gate enforces them. Without this lock a
+        # future edit can delete a sanctioned remedy silently and the pipeline
+        # quietly returns to having no route for anything that arrives after
+        # its phase has closed. Kept separate from test_step0_structure_covered
+        # and test_adapter_consumer_map_present so their failure signals stay
+        # clean.
+        for needle in ("The re-gate rule", "Step 2.1a", "Step 2.1b",
+                       "Step 4.7", "Step 4.8",
+                       "GAPS disposition", "targeted top-up",
+                       "Targeted patch", "scoping-only", "RESOLVES_ONLY",
+                       "CONTENT_MISMATCH", "verification-route inventory",
+                       "Resolution is necessary and not sufficient",
+                       "validate_config.py", "--expect",
+                       "raw-export", "Orchestrator pre-checks",
+                       # The adversarial-review pass: no marker repair, and a
+                       # top-up must reconcile + conditionally re-attack.
+                       "There is no marker-repair route",
+                       "Never prepend a sentinel by hand",
+                       "Top-up delta", "superseded"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.skill)
+
+    def test_no_raw_export_swallowing_globs(self):
+        # A marker-repaired dossier may contain 02-gemini.md AND
+        # 02-gemini.raw-export.md (historical runs; the repair route itself is
+        # gone). Any "paste all 02-*.md" instruction feeds that lane twice
+        # into Phase 3/5 or NotebookLM — double weight for one lane is the
+        # correlated-evidence failure the pipeline exists to prevent. The
+        # runbooks therefore enumerate canonical names and never glob.
+        for name in ("10-software-dev-research-runbook.md",
+                     "11-content-research-runbook.md"):
+            with self.subTest(doc=name):
+                text = read(os.path.join(DOCS_METHODOLOGY, name))
+                self.assertNotIn("02-*", text)
+                self.assertIn("raw-export", text)
+
+    def test_orchestrator_findings_rule_is_in_the_methodology(self):
+        # PF-18: the rule lives in the spine, not only in the skill, because
+        # it binds every surface that runs the pipeline.
+        text = read(os.path.join(DOCS_METHODOLOGY, "00-master-methodology.md"))
+        self.assertIn("Orchestrator findings are not evidence", text)
+        self.assertIn("Provider export quirks", text)
+        self.assertIn("AI chat transcript", text)
+
+    def test_config_hidden_grammar_parity(self):
+        # The orchestrator's validator (reader) and this skill's merge-config
+        # (writer) each carry a local copy of the hidden-config grammar —
+        # runtime cross-skill imports are forbidden. If the two ever disagree
+        # about which lines are active, the writer can update a line the
+        # reader ignores, or vice versa: an approved merge that "succeeds"
+        # into a comment while validation keeps reporting the entry missing
+        # (review finding 8). Same corpus, both implementations, per-line
+        # equality of the active/hidden classification.
+        vc = load_sibling("validate_config.py")
+        corpus = [
+            "# plain\nDossier root: a/\n- Grok: x\n",
+            "<!-- one line comment -->\n- Grok: x\n",
+            "<!--\n- Grok: hidden\n-->\n- Grok: active\n",
+            "<!-- unterminated\n- Grok: hidden\n- Gemini: also hidden\n",
+            "```\nDossier root: decoy/\n```\nDossier root: real/\n",
+            "~~~text\n## Agent access\n~~~\n## Agent access\n- Grok: x\n",
+            "```markdown\n# Research configuration\nDossier root: fenced/\n",
+            "text <!-- inline --> more\n- Grok: x\n",
+            "    ```\nnot a fence (indent 4)\n",
+            # PR review: markers inside an already-hidden region are inert —
+            # the scan is left to right, and the first opener claims text
+            # through its own closer.
+            "<!-- rules\n```\n-->\n- Grok: x\n",
+            "```\n<!-- decoy\n```\n- Grok: x\n",
+            "~~~\n<!--\n~~~\nDossier root: real/\n",
+        ]
+        for text in corpus:
+            with self.subTest(text=text[:40]):
+                reader = vc.mask_hidden(text).split("\n")
+                writer = kio._config_hidden_mask(text).split("\n")
+                self.assertEqual(len(reader), len(writer))
+                for line_reader, line_writer in zip(reader, writer):
+                    # Equal blanked-ness per line is the contract; exact
+                    # whitespace inside a masked span is free.
+                    self.assertEqual(bool(line_reader.strip()),
+                                     bool(line_writer.strip()),
+                                     (line_reader, line_writer))
+
+    def test_validate_config_label_and_route_lock(self):
+        # The orchestrator's config validator duplicates these tables because
+        # runtime scripts may not import across skill directories. This is the
+        # lock that makes the duplication safe.
+        vc = load_sibling("validate_config.py")
+        self.assertEqual(vc.AGENT_IDS, vk.AGENT_IDS)
+        self.assertEqual(vc.LANE_AGENT_IDS, vk.LANE_AGENT_IDS)
+        self.assertEqual(vc.CONFIG_LABELS, vk.CONFIG_LABELS)
+        self.assertEqual(vc.ROUTES_BY_AGENT, vk.ROUTES_BY_AGENT)
+        self.assertEqual(len(vc.CONFIG_LABELS), 10)
+        self.assertEqual(sorted(vc.ROUTES_BY_AGENT), sorted(vc.AGENT_IDS))
+        self.assertNotIn("scite", vc.LANE_AGENT_IDS)
+        self.assertEqual([label for label, _p in vc.SECRET_RES],
+                         [label for label, _p in vk.SECRET_RES])
+        self.assertEqual([p.pattern for _l, p in vc.SECRET_RES],
+                         [p.pattern for _l, p in vk.SECRET_RES])
+
+    def test_validate_config_entry_rules_match_builder(self):
+        # Behavioural lock. The two implementations must agree on every access
+        # entry, not merely share constants — the per-agent route enum is the
+        # whole point, so the same literal entry is probed against three agents
+        # with different enums first.
+        vc = load_sibling("validate_config.py")
+        web = {"status": "available", "tier": None, "routes": ["web"]}
+        probes = [
+            ("perplexity", web, True),
+            ("claude", web, False),
+            ("deepseek", web, False),
+            ("claude", {"status": "available", "tier": "Max",
+                        "routes": ["claude_web_extended_thinking"]}, True),
+            ("deepseek", {"status": "available", "tier": None,
+                          "routes": ["self_hosted"]}, True),
+            ("grok", {"status": "unavailable", "tier": None, "routes": []}, True),
+            ("grok", {"status": "available", "tier": "Pro", "routes": []}, False),
+            ("grok", {"status": "unknown", "tier": "Pro", "routes": []}, False),
+            ("grok", {"status": "unavailable", "tier": "Pro",
+                      "routes": []}, False),
+            ("grok", {"status": "unknown", "tier": None,
+                      "routes": ["web"]}, False),
+            ("grok", {"status": "maybe", "tier": None, "routes": []}, False),
+            ("grok", {"status": "available", "tier": "  ",
+                      "routes": ["web"]}, False),
+            ("grok", {"status": "available", "tier": None, "routes": ["web"],
+                      "note": "x"}, False),
+            ("grok", {"status": "available", "tier": None}, False),
+            ("grok", {"status": "available", "tier": None,
+                      "routes": ["web", "web"]}, False),
+            ("grok", {"status": "available", "tier": "token=abcdefgh",
+                      "routes": ["web"]}, False),
+        ]
+        for agent in vk.AGENT_IDS:
+            probes.append((agent, {"status": "unknown", "tier": None,
+                                   "routes": []}, True))
+        for agent, entry, expected_ok in probes:
+            with self.subTest(agent=agent, entry=entry):
+                orchestrator_ok = vc.validate_entry(agent, dict(entry)) == []
+                builder_ok = kio._validate_access_entry(agent, dict(entry)) is None
+                self.assertEqual(orchestrator_ok, expected_ok)
+                self.assertEqual(orchestrator_ok, builder_ok)
+
+    def test_config_example_validates_under_orchestrator_validator(self):
+        # Round-trips the shipped template through the new validator. This is
+        # the test that catches the HTML-comment parsing trap: the template
+        # documents its own reading rules inside a comment, and several of
+        # those lines parse as "- Label: value".
+        vc = load_sibling("validate_config.py")
+        report = vc.run(os.path.join(ORCH_DIR, "templates",
+                                     "research-config.example.md"))
+        self.assertEqual(report["result"], "pass")
+        self.assertEqual(report["failures"], [])
+        self.assertEqual(report["dossier_root"], "dossiers/")
+        self.assertEqual(report["summary"],
+                         {"v1": 10, "legacy": 0, "invalid": 0, "missing": 0})
+
     def test_phase1_enum_and_roles_lock(self):
         vp = load_sibling("validate_phase1.py")
         self.assertEqual(set(vk.PHASE1_AGENT_ENUM.values()), vp.AGENTS)
@@ -549,6 +708,7 @@ class RepoDocsDriftTests(unittest.TestCase):
         self.assertNotIn("most demanding overlay", text)
         for needle in ("`wordpress_article`", "`youtube_script`",
                        "`ebook_chapter`", "`deck_and_screencast`",
+                       "`html_report`",
                        "use case 7", "separate kickoff"):
             self.assertIn(needle, text)
         self.assertIn("Scite", text)
@@ -559,6 +719,7 @@ class RepoDocsDriftTests(unittest.TestCase):
                                  "11-content-research-runbook.md"))
         self.assertNotIn("most demanding overlay", text)
         for needle in ("`wordpress_article`", "`ebook_chapter`",
+                       "`html_report`",
                        "separate kickoff", "research-kickoff-builder",
                        "06a-wordpress_article-prep.md"):
             self.assertIn(needle, text)
@@ -570,17 +731,55 @@ class RepoDocsDriftTests(unittest.TestCase):
         self.assertIn("research-kickoff-builder", text)
 
     def test_render_matrix_constants_match_docs(self):
+        # Exact dict equality against a literal, deliberately NOT relaxed to
+        # assertIn or a length check: moving this literal IS the sanctioned
+        # mechanism for changing the closed matrix, and any unsanctioned
+        # addition still fails here.
         self.assertEqual(
             vk.ADDITIONAL_RENDERS_ALLOWED,
             {2: ("wordpress_article",),
              6: ("youtube_script", "wordpress_article", "ebook_chapter"),
-             8: ("deck_and_screencast",)})
+             8: ("deck_and_screencast", "html_report")})
         self.assertEqual(
             vk.PRIMARY_RENDER_BY_USE_CASE,
             {1: "architecture_decision_record", 2: "youtube_script",
              3: "presentation_deck", 4: "ebook", 5: "wordpress_article",
              6: "health_protocol", 7: "deck_and_screencast",
              8: "decision_brief"})
+        # Previously locked only transitively, through the schema enum.
+        self.assertEqual(
+            vk.ALL_ADDITIONAL_RENDER_IDS,
+            ("wordpress_article", "youtube_script", "ebook_chapter",
+             "deck_and_screencast", "html_report"))
+        # Structural invariants the matrix has always had and never asserted.
+        for use_case, renders in vk.ADDITIONAL_RENDERS_ALLOWED.items():
+            for render in renders:
+                with self.subTest(use_case=use_case, render=render):
+                    self.assertIn(render, vk.ALL_ADDITIONAL_RENDER_IDS)
+                    self.assertNotEqual(
+                        render, vk.PRIMARY_RENDER_BY_USE_CASE[use_case])
+
+    def test_html_report_constraints_locked_in_normative_copies(self):
+        # PF-36: the extension exception and the two render-specific
+        # constraints are the reason html_report is in the matrix at all. They
+        # are prose, so without this they can silently decay into an
+        # unenforced sentence — which is the shape of the defect PF-36 fixed.
+        for path in (os.path.join(DOCS_METHODOLOGY,
+                                  "12-project-startup-checklist.md"),
+                     os.path.join(DOCS_METHODOLOGY,
+                                  "11-content-research-runbook.md"),
+                     os.path.join(DOCS_METHODOLOGY,
+                                  "13-overlay-deliberation-modes.md"),
+                     os.path.join(ORCH_DIR, "SKILL.md"),
+                     os.path.join(SKILL_DIR, "references",
+                                  "kickoff-contract.md"),
+                     os.path.join(SKILL_DIR, "references",
+                                  "profile-08-decision.md")):
+            with self.subTest(path=os.path.basename(path)):
+                text = read(path)
+                self.assertIn("06-html_report.html", text)
+                self.assertIn("LOCAL-ONLY", text)
+                self.assertIn("confidence level", text)
 
     def test_use_case_table_matches_checklist12(self):
         text = read(os.path.join(DOCS_METHODOLOGY,

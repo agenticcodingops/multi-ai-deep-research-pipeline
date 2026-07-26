@@ -458,6 +458,113 @@ class MergeConfigTests(unittest.TestCase):
     def _config_path(self, ws):
         return os.path.join(ws, "research-config.md")
 
+    def _write_config(self, ws, text):
+        with open(self._config_path(ws), "w", encoding="utf-8",
+                  newline="\n") as fh:
+            fh.write(text)
+
+    def _read_config(self, ws):
+        with open(self._config_path(ws), "r", encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_commented_label_is_not_an_update_target(self):
+        # Review finding 8: merge-config scanned raw lines, so an approved
+        # update rewrote the Grok bullet INSIDE the comment, reported MERGED,
+        # and the entry stayed missing on the next validation.
+        commented = ('<!--\n- Grok: {"status":"unknown","tier":null,'
+                     '"routes":[]}\n-->')
+        with tempfile.TemporaryDirectory() as ws:
+            self._write_config(
+                ws, "# Research configuration\n\nDossier root: dossiers/\n\n"
+                    "## Agent access\n\n" + commented + "\n")
+            updates = self._updates(ws, {"dossier_root": None, "agent_access": {
+                "grok": {"status": "unavailable", "tier": None, "routes": []}}})
+            code, report = run_cli(["merge-config", self._config_path(ws),
+                                    "--updates", updates,
+                                    "--workspace-root", ws, "--approved"])
+            self.assertEqual(code, 0, report)
+            text = self._read_config(ws)
+            self.assertIn(commented, text)  # comment preserved byte-for-byte
+            active = kio._config_hidden_mask(text)
+            grok_lines = [ln for ln in active.split("\n")
+                          if ln.startswith("- Grok: ")]
+            self.assertEqual(len(grok_lines), 1)
+            self.assertIn('"status":"unavailable"', grok_lines[0])
+
+    def test_fence_marker_in_comment_does_not_hide_the_config(self):
+        # PR review: an unmatched ``` inside a leading comment opened a fence
+        # in the mask, hiding every active line below it — merge-config then
+        # saw no active bullet to edit and no section to anchor on.
+        commented = "<!--\nexample fence the comment never closes:\n```\n-->"
+        with tempfile.TemporaryDirectory() as ws:
+            self._write_config(
+                ws, "# Research configuration\n\n" + commented +
+                    "\n\nDossier root: dossiers/\n\n## Agent access\n\n"
+                    '- Grok: {"status":"unknown","tier":null,"routes":[]}\n')
+            updates = self._updates(ws, {"dossier_root": None, "agent_access": {
+                "grok": {"status": "unavailable", "tier": None, "routes": []}}})
+            code, report = run_cli(["merge-config", self._config_path(ws),
+                                    "--updates", updates,
+                                    "--workspace-root", ws, "--approved"])
+            self.assertEqual(code, 0, report)
+            text = self._read_config(ws)
+            self.assertIn(commented, text)  # comment preserved byte-for-byte
+            active = kio._config_hidden_mask(text)
+            grok_lines = [ln for ln in active.split("\n")
+                          if ln.startswith("- Grok: ")]
+            self.assertEqual(len(grok_lines), 1)
+            self.assertIn('"status":"unavailable"', grok_lines[0])
+
+    def test_commented_root_before_active_root_not_updated(self):
+        with tempfile.TemporaryDirectory() as ws:
+            self._write_config(
+                ws, "# Research configuration\n\n"
+                    "<!-- Dossier root: decoy/ -->\n"
+                    "Dossier root: dossiers/\n")
+            updates = self._updates(ws, {"dossier_root": "research/",
+                                         "agent_access": {}})
+            code, report = run_cli(["merge-config", self._config_path(ws),
+                                    "--updates", updates,
+                                    "--workspace-root", ws, "--approved"])
+            self.assertEqual(code, 0, report)
+            text = self._read_config(ws)
+            self.assertIn("<!-- Dossier root: decoy/ -->", text)
+            self.assertIn("Dossier root: research/", text)
+            self.assertNotIn("Dossier root: dossiers/", text)
+
+    def test_fenced_heading_is_not_an_insert_anchor(self):
+        with tempfile.TemporaryDirectory() as ws:
+            self._write_config(
+                ws, "# Research configuration\n\nDossier root: dossiers/\n\n"
+                    "```markdown\n## Agent access\n```\n\n"
+                    "## Agent access\n\n"
+                    '- Perplexity: {"status":"unknown","tier":null,'
+                    '"routes":[]}\n')
+            updates = self._updates(ws, {"dossier_root": None, "agent_access": {
+                "grok": {"status": "unavailable", "tier": None, "routes": []}}})
+            code, report = run_cli(["merge-config", self._config_path(ws),
+                                    "--updates", updates,
+                                    "--workspace-root", ws, "--approved"])
+            self.assertEqual(code, 0, report)
+            text = self._read_config(ws)
+            fenced = text.index("```markdown")
+            real = text.index("## Agent access", text.index("```\n") + 4)
+            self.assertGreater(text.index("- Grok:"), real)
+            self.assertLess(fenced, real)
+
+    def test_multiple_active_sections_rejected(self):
+        with tempfile.TemporaryDirectory() as ws:
+            self._write_config(
+                ws, "# Research configuration\n\nDossier root: dossiers/\n\n"
+                    "## Agent access\n\n## Agent access\n")
+            updates = self._updates(ws, {"dossier_root": None, "agent_access": {
+                "grok": {"status": "unavailable", "tier": None, "routes": []}}})
+            code, report = run_cli(["merge-config", self._config_path(ws),
+                                    "--updates", updates,
+                                    "--workspace-root", ws, "--approved"])
+            self.assertEqual(code, 1)
+            self.assertEqual(report["code"], "AMBIGUOUS_SECTION")
+
     def test_missing_config_created_from_template(self):
         with tempfile.TemporaryDirectory() as ws:
             updates = self._updates(ws, {"dossier_root": "dossiers",

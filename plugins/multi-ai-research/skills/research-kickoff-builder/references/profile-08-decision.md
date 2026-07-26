@@ -2,7 +2,7 @@
 
 **Derived primary overlay:** `13-overlay-deliberation-modes.md`
 **Overlay heading anchors (drift-locked):** `## When 13 is the primary overlay` · `## Mode selector (quick reference)` · `<output_format> — DECISION BRIEF`
-**Derived primary render:** `decision_brief` (the Phase-5 format **and** the terminal primary render) · **Allowed additional renders:** `deck_and_screencast`
+**Derived primary render:** `decision_brief` (the Phase-5 format **and** the terminal primary render) · **Allowed additional renders:** `deck_and_screencast`, `html_report` (self-contained `06-html_report.html`; reproduces the stated limitations and confidence level; carries no `LOCAL-ONLY` string)
 
 ## Fields
 

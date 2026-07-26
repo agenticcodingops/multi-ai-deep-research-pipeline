@@ -248,11 +248,13 @@ Field(s): `/preferences/additional_renders`
 
 ### Q_CORE_ADDL_RENDERS_UC8
 
-Should Phase 6 also derive a deck + screencast from the Decision Brief?
+Which additional renders should Phase 6 derive from the Decision Brief?
 
 Field(s): `/preferences/additional_renders`
 - a) No additional renders (Recommended) — The Decision Brief is the terminal artifact. (value: `[]`)
-- b) Add deck + screencast — One Marp source rendered to both formats for sharing the decision. (value: `["deck_and_screencast"]`)
+- b) Deck + screencast — One Marp source rendered to both formats for sharing the decision. (value: `"deck_and_screencast"`)
+- c) HTML report — Self-contained 06-html_report.html keeping the stated limitations and confidence level; no LOCAL-ONLY string. (value: `"html_report"`)
+- [multi-select allowed]
 - or supply your own typed value
 
 ### Q_CORE_STANDING_INSTRUCTIONS
@@ -578,13 +580,13 @@ Answer type: string
 ```json
 {
   "answer_sheet_schema_version": 1,
-  "question_catalog_digest": "83c528fe4983c9d937c6b9f1632494e0a679a4ba8f7e94762d739074f08182f6",
+  "question_catalog_digest": "fe348fea5264232b07ed9c7a0273061eb8d4d2d3d2a12f63874ce033363f631a",
   "generated_framings": [],
   "framing_selection": {
     "selected_ids": [],
     "primary_id": null
   },
-  "sheet_instance_digest": "b9d083c79b2b452eda971ee0b2be22534a627f3e76f097b60b1630e9ae26240b",
+  "sheet_instance_digest": "c6173299a5e5487a59fc3e72670363bc7c1c17028a0b3bf59af9f69471ee9d71",
   "answers": {
     "Q_CORE_RESEARCH_QUESTION": null,
     "Q_CORE_DECISION_CONTEXT": null,

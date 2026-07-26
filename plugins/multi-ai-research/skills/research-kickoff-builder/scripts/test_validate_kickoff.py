@@ -452,6 +452,15 @@ def _uc8_answers():
     return answers
 
 
+def _uc8_html_report_answers():
+    # Pushes the new uc8 render through normalize_menu_answer for real. The K3
+    # cross-product test mutates the control payload directly, so without this
+    # golden the multi-select option would go through zero end-to-end tests.
+    answers = _uc8_answers()
+    answers["Q_CORE_ADDL_RENDERS_UC8"] = "c"
+    return answers
+
+
 def _uc8_exception_answers():
     answers = _uc8_answers()
     answers.pop("Q_CORE_MODES")  # exception is invalid with debate/red-team
@@ -507,6 +516,8 @@ GOLDEN_SPECS = {
     "pass_uc6_health": dict(use_case=6, answers=_uc6_answers),
     "pass_uc7_deck_screencast": dict(use_case=7, answers=_uc7_answers),
     "pass_uc8_decision": dict(use_case=8, answers=_uc8_answers),
+    "pass_uc8_decision_html_report": dict(use_case=8,
+                                          answers=_uc8_html_report_answers),
     "pass_uc8_decision_exception": dict(
         use_case=8, answers=_uc8_exception_answers,
         access=_no_deepseek_access,

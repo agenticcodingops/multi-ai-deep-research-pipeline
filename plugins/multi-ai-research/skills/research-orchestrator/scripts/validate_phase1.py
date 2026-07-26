@@ -10,6 +10,7 @@ Exit codes: 0 = all gates pass, 1 = gate failures, 2 = usage/IO/parse error.
 
 import argparse
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -34,6 +35,58 @@ WINDOWS_RESERVED = {"con", "prn", "aux", "nul"} | \
     {"lpt{0}".format(i) for i in range(1, 10)}
 DEFERRED_PHASES = (2.5, 4.5)
 DEFERRED_TOKENS_BY_PHASE = {4.5: {"<DRAFT_RECOMMENDATION>"}, 2.5: set()}
+# Per-phase contract every deferred template must carry in its own text (G6).
+# Regexes, not substrings: _canon() casefolds, so a "kill" substring matches
+# "skill", and the severity vocabulary is uppercase by contract (overlay 13,
+# Mode 1). The 2.5 set mirrors EVERY element gate_phase2's debate branch
+# scores the OUTPUT against — a template that never asked for the rebuttal
+# produces an output that fails C2 after the operator ran six surfaces, which
+# is the discovery cost PF-13 exists to remove. The citation needle demands a
+# cite-verb in the same sentence as https: a decorative "Background page:
+# https://example.com" is not a citation instruction.
+_CITE_RE = re.compile(r"(?i)\bcit(?:e|ing|ation)\b[^.!?]{0,120}\bhttps\b")
+DEFERRED_STANDING = {
+    2.5: (("[REASONED] tag rule", re.compile(r"(?i)\[reasoned\]")),
+          ("KEY TENSION", re.compile(r"(?i)\bkey[ \t]+tension\b")),
+          ("COMMON GROUND", re.compile(r"(?i)\bcommon[ \t]+ground\b")),
+          ("rebuttal instruction",
+           re.compile(r"(?i)\brebutt|\bcounter[ \t-]argument")),
+          ("flip-fact instruction",
+           re.compile(r"(?i)\bflip|\bwould[ \t]+(?:change|reverse|overturn)")),
+          ("two-URL floor (at least two)",
+           re.compile(r"(?i)\bat[ \t]+least[ \t]+two\b")),
+          ("https citation instruction (bound to claims)", _CITE_RE)),
+    4.5: (("severity word KILL", re.compile(r"\bKILL\b")),
+          ("severity word MAJOR", re.compile(r"\bMAJOR\b")),
+          ("severity word MANAGEABLE", re.compile(r"\bMANAGEABLE\b")),
+          ("[REASONED] tag rule", re.compile(r"(?i)\[reasoned\]")),
+          ("https citation instruction (bound to claims)", _CITE_RE)),
+}
+# Debate-side extraction — semantically identical to gate_phase2's, so Phase 1
+# never blocks a side spelling Phase 2 would accept (and vice versa); the
+# probe-table parity test in test_validate_phase1 locks the two together.
+# A line naming exactly one side assigns it; a line naming both is the
+# template's generic explanation of the format and is ignored.
+SIDE_WORD_RE = re.compile(r"(?<![A-Za-z])(FOR|AGAINST)(?![A-Za-z])")
+SIDE_ASSIGN_LINE_RES = [
+    re.compile(u"(?i)^[ \\t]*(?:>[ \\t]*)*(?:\\(?\\d{1,2}[.)][ \\t]*)?"
+               u"(?:\\*\\*)?[ \\t]*position(?:[ \\t]+statement)?[ \\t]*"
+               u"(?:[:–—-]|\\()"),
+    re.compile(r"(?i)\bassigned\b[^\n]{0,30}\bposition\b"),
+    re.compile(r"(?i)\bwrite[ \t]+exactly[ \t]+position[ \t]*:"),
+]
+
+
+def deferred_debate_side(template):
+    """The single side a phase-2.5 template is written for, or None."""
+    sides = set()
+    for line in normalize(template).splitlines():
+        if not any(rx.search(line) for rx in SIDE_ASSIGN_LINE_RES):
+            continue
+        found = {m.group(1).upper() for m in SIDE_WORD_RE.finditer(line)}
+        if len(found) == 1:
+            sides |= found
+    return sides.pop() if len(sides) == 1 else None
 SENTINEL_TOKEN = "===BEGIN LANE OUTPUT==="
 SENTINEL_LINE_RE = re.compile(r"(?m)^\s*===BEGIN LANE OUTPUT===\s*$")
 SECTION_NAMES = ["tl;dr", "findings", "conflicts and uncertainties",
@@ -41,17 +94,109 @@ SECTION_NAMES = ["tl;dr", "findings", "conflicts and uncertainties",
 GT_TAGS = ["[ground-truth-verified]", "[ground-truth-asserted]",
            "[contradicts-ground-truth]"]
 GT_MENTION_NEEDLES = ("ground truth", "ground-truth", "ground_truth")
-ALLOWLIST_POLICY = "word-forms"
+# Which placeholder kinds a project-rules allowlist may suppress. Delimited
+# tokens (<TOKEN>, {TOKEN}, «TOKEN», [INSERT…) are never suppressible.
+ALLOWLIST_POLICY = "word-and-bracket-forms"
+ALLOWLIST_KINDS = frozenset(["word", "bracket"])
 REQUIRED_ARRAYS = ["sub_questions", "agent_assignments", "lane_roles",
                    "phase_2_prompts", "disqualifying_sources",
                    "success_criteria", "known_traps"]
+# Uppercase bracket tokens, including separator shapes ([DATE/TIME],
+# [KEY: VALUE], [URL(S)], [YES | NO]) and one-character slots ([X]). The
+# lookahead skips markdown links ([X](url)); pure-digit citation markers never
+# match because the first character must be a letter.
+BRACKET_TAG_RE = re.compile(r"\[[A-Z](?:[A-Z0-9 _./:()|-]{0,59})?\](?!\()")
 PLACEHOLDER_KIND_RES = [
     ("angle", re.compile(r"<[A-Z][A-Z0-9_]*>")),
     ("brace", re.compile(r"\{[A-Z][A-Z0-9_]*\}")),
     ("guillemet", re.compile(u"«[^»]{1,60}»")),
     ("word", re.compile(r"\bTODO\b|\bTBD\b")),
     ("insert", re.compile(r"\[INSERT", re.IGNORECASE)),
+    ("bracket", BRACKET_TAG_RE),
 ]
+# Bracket-uppercase tokens the pipeline emits BY CONSTRUCTION. G6 requires
+# several of them in every staged prompt and the overlays inline the rest into
+# their OUTPUT FORMAT blocks, so the bracket detector must never read them as
+# unfilled operator slots. Derived from references/*.md and locked there by
+# test_bracket_exemptions_cover_shipped_docs — a doc edit that adds a real
+# placeholder goes red in CI rather than in a user's run.
+SEMANTIC_BRACKET_TAGS = frozenset([
+    # confidence — 01, 10, 11
+    "[HIGH]", "[MEDIUM]", "[LOW]",
+    # ground truth — 01
+    "[GROUND-TRUTH-VERIFIED]", "[GROUND-TRUTH-ASSERTED]",
+    "[CONTRADICTS-GROUND-TRUTH]",
+    # claim classification — 01, 02, 10, 11
+    "[REASONED]", "[UNVERIFIED]", "[VERIFIED]", "[CORRECTED]", "[DISPUTED]",
+    "[CONTESTED]", "[SINGLE-SOURCE]", "[MIXED EVIDENCE]", "[SENTIMENT-CONCUR]",
+    "[SELF-CLAIM-UNVERIFIED]",
+    # red-team severity — 13
+    "[KILL]", "[MAJOR]", "[MANAGEABLE]",
+    # health evidence strength — 07
+    "[STRONG]", "[MODERATE]", "[WEAK]",
+    # youtube script markers — 03
+    "[SCRIPT]", "[ON-SCREEN]", "[ON-SCREEN SOURCE]", "[B-ROLL PROMPT]",
+    "[EVIDENCE-STRENGTH]", "[VENDOR-CLAIM]", "[POTENTIAL-COI]",
+])
+# Fill-shaped schema slots the shipped overlays use INSIDE their output-format
+# blocks. Unlike the semantic vocabulary above, these look exactly like
+# unfilled operator slots — "The operator supplied [URL]; treat it as the
+# source" is a real placeholder — so they are exempt only on a line that
+# exists verbatim in the shipped reference corpus (the sanctioned schema
+# line a decomposer copies). Anywhere else they fail G5.
+CONTEXT_BOUND_BRACKET_TAGS = frozenset([
+    "[URL]",                       # 07: citation schema line
+    "[N]",                         # 07: same line — sample size slot
+    "[SOURCE TO CITE ON SCREEN]",  # 03: on-screen citation slot
+    "[IMAGE: ...]",                # 06: article-body image markers
+    "[HIGH/MEDIUM/LOW]",           # 01: the contract's tag shorthand
+    "[P]",                         # 02: Spec Kit parallelisable-task marker
+    "[VERIFIED | CONTESTED | SINGLE-SOURCE]",  # 08: slide evidence slot
+])
+_REFERENCES_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "references")
+_SANCTIONED_CONTEXT_CACHE = None
+
+
+def sanctioned_context_lines():
+    """Canonicalized reference-corpus lines that carry a context-bound token.
+
+    Read from the skill's own references/ folder (shipped alongside this
+    script; prerequisite 1 halts the run when it is missing). An unreadable
+    corpus yields the empty set — fail closed: the token is then a
+    placeholder everywhere."""
+    global _SANCTIONED_CONTEXT_CACHE
+    if _SANCTIONED_CONTEXT_CACHE is None:
+        lines = set()
+        try:
+            names = sorted(os.listdir(_REFERENCES_DIR))
+        except OSError:
+            names = []
+        for name in names:
+            if not name.endswith(".md"):
+                continue
+            try:
+                with open(os.path.join(_REFERENCES_DIR, name), "r",
+                          encoding="utf-8", errors="replace") as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            for line in text.splitlines():
+                if any(token in line for token in CONTEXT_BOUND_BRACKET_TAGS):
+                    lines.add(_canon(line))
+        _SANCTIONED_CONTEXT_CACHE = frozenset(lines)
+    return _SANCTIONED_CONTEXT_CACHE
+
+
+def context_bound_violations(text):
+    """Context-bound tokens appearing outside their sanctioned schema lines."""
+    violations = set()
+    sanctioned = sanctioned_context_lines()
+    for line in text.splitlines():
+        for token in CONTEXT_BOUND_BRACKET_TAGS:
+            if token in line and _canon(line) not in sanctioned:
+                violations.add(token)
+    return violations
 STANDING = [("[HIGH]", ("[high]",)), ("[MEDIUM]", ("[medium]",)),
             ("[LOW]", ("[low]",)),
             ("resolvable URL", ("resolvable url", "resolvable https url")),
@@ -572,14 +717,36 @@ class _Validator(object):
                               minimum))
 
     # ------------------------------------------------------------------ G5
+    def _bracket_exempt(self):
+        """Bracket tokens G5 must not read as unfilled slots: the shipped
+        semantic vocabulary, plus any bracket-shaped project allowlist entry."""
+        allow = set(self.rules["placeholder_allowlist"])
+        return SEMANTIC_BRACKET_TAGS | {t for t in allow
+                                        if BRACKET_TAG_RE.fullmatch(t)}
+
     def g5_placeholders(self):
         allow = set(self.rules["placeholder_allowlist"])
+        exempt = self._bracket_exempt()
         for record in self.prompts:
             if record["prompt"] is None:
                 continue
-            hits = placeholder_hits(normalize(record["prompt"]))
+            norm = normalize(record["prompt"])
+            violations = context_bound_violations(norm)
+            hits = placeholder_hits(norm)
             for token, kind in sorted(hits):
-                if kind == "word" and ALLOWLIST_POLICY == "word-forms" and \
+                if kind == "bracket" and \
+                        token in CONTEXT_BOUND_BRACKET_TAGS and \
+                        token not in allow:
+                    if token in violations:
+                        self.fail("G5", record["lane"],
+                                  "context-bound schema token '{0}' outside "
+                                  "its sanctioned output-format line — here "
+                                  "it is an unfilled placeholder".format(token))
+                    continue
+                if kind == "bracket" and token in exempt:
+                    continue
+                if kind in ALLOWLIST_KINDS and \
+                        ALLOWLIST_POLICY == "word-and-bracket-forms" and \
                         token in allow:
                     continue
                 self.fail("G5", record["lane"],
@@ -587,8 +754,17 @@ class _Validator(object):
         for index, entry in enumerate(self.deferred):
             label = "deferred prompt {0} (phase {1})".format(index + 1, entry["phase"])
             contract = DEFERRED_TOKENS_BY_PHASE.get(entry["phase"], set())
-            found = {token for token, _kind in
-                     placeholder_hits(normalize(entry["template"]))}
+            norm_template = normalize(entry["template"])
+            for token in sorted(context_bound_violations(norm_template)):
+                self.fail("G5", None,
+                          "{0}: context-bound schema token '{1}' outside its "
+                          "sanctioned output-format line".format(label, token))
+            # The semantic vocabulary is contract text, not a deferred slot: a
+            # Red-Team template that says [REASONED] is correct, not rogue.
+            found = {token for token, kind in placeholder_hits(norm_template)
+                     if not (kind == "bracket" and
+                             (token in exempt or
+                              token in CONTEXT_BOUND_BRACKET_TAGS))}
             declared = entry["declared"]
             undeclared = sorted(found - declared)
             stale = sorted(declared - found)
@@ -653,6 +829,57 @@ class _Validator(object):
                 self.fail("G6", record["lane"],
                           "prompt for {0} missing required strings: {1}".format(
                               record["sqid"], ", ".join(missing)))
+        # Deferred templates are staged verbatim to lanes at Steps 2.5 and 4.5
+        # and their OUTPUTS are gated at Step 3.1 — so the template must carry
+        # the contract that output is scored against, or the mismatch surfaces
+        # only after the pass has run on every surface.
+        debate_sides = []
+        for index, entry in enumerate(self.deferred):
+            rules = DEFERRED_STANDING.get(entry["phase"])
+            if rules is None:
+                continue
+            label = "deferred prompt {0} (phase {1})".format(
+                index + 1, entry["phase"])
+            raw = normalize(entry["template"])
+            # Whitespace-collapsed so \b needles survive a wrapped template.
+            flat = " ".join(raw.split())
+            missing = []
+            if SENTINEL_TOKEN not in raw:
+                missing.append("sentinel token {0}".format(SENTINEL_TOKEN))
+            elif SENTINEL_LINE_RE.search(raw):
+                self.fail("G6", None,
+                          "{0}: sentinel must not appear as a standalone line "
+                          "inside the template".format(label))
+            for shown, rx in rules:
+                if not rx.search(flat):
+                    missing.append(shown)
+            if entry["phase"] == 2.5:
+                side = deferred_debate_side(entry["template"])
+                debate_sides.append(side)
+                if side is None:
+                    missing.append(
+                        "assigned side (a line naming exactly one of FOR or "
+                        "AGAINST — a generic 'Position: FOR or Position: "
+                        "AGAINST' choice assigns neither)")
+            if missing:
+                self.fail("G6", None,
+                          "{0} missing required strings: {1}".format(
+                              label, ", ".join(missing)))
+        # The pair rule: Debate is position-ASSIGNED, so a staged Debate needs
+        # one complete template per side. One generic template with a side to
+        # fill is not a legal encoding (the 2.5 token contract is empty), and
+        # one side staged twice means the other side is never argued.
+        if debate_sides:
+            counted = Counter(side for side in debate_sides if side)
+            if len(debate_sides) != 2 or counted.get("FOR") != 1 or \
+                    counted.get("AGAINST") != 1:
+                self.fail("G6", None,
+                          "phase-2.5 debate entries must stage exactly one FOR "
+                          "and one AGAINST template (found {0} entr{1}; sides: "
+                          "{2})".format(
+                              len(debate_sides),
+                              "y" if len(debate_sides) == 1 else "ies",
+                              ", ".join(s or "none" for s in debate_sides)))
 
     # ------------------------------------------------------------------ G7
     def _lane_for_path(self, path):
@@ -746,11 +973,14 @@ class _Validator(object):
                               "{1!r})".format(label, url))
 
 
-def _build_matrix(columns, prompt_lanes, failures, warnings):
+def _build_matrix(columns, prompt_lanes, failures, warnings, has_deferred=False):
     applicable = {
         "G1": {"GLOBAL"}, "G2": {"GLOBAL"}, "G3": {"GLOBAL"}, "G4": {"GLOBAL"},
         "G5": {"GLOBAL"} | set(prompt_lanes),
-        "G6": set(prompt_lanes),
+        # G6 gates staged prompts per lane, and deferred templates globally —
+        # without the GLOBAL cell a passing deferred check would render '-',
+        # indistinguishable from "not run", while a failing one renders FAIL.
+        "G6": set(prompt_lanes) | ({"GLOBAL"} if has_deferred else set()),
         "G7": {"GLOBAL"} | set(prompt_lanes),
         "G8": {"GLOBAL"},
     }
@@ -812,7 +1042,8 @@ def run(document_path, project_rules_path=None):
             exc.__class__.__name__, exc))
     columns = ["GLOBAL"] + validator.lane_columns()
     matrix = _build_matrix(columns, validator.prompt_lanes(),
-                           validator.failures, validator.warnings)
+                           validator.failures, validator.warnings,
+                           bool(validator.deferred))
     return {
         "result": "fail" if validator.failures else "pass",
         "failures": validator.failures,

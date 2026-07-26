@@ -1,7 +1,7 @@
 # Prompts Library — Multi-AI Research Pipeline
 
 **Owner:** AgenticCodingOps  
-**Version:** 1.3 (2026-07-22 — Phase-2 gains the machine-checked OUTPUT FORMAT skeleton; sub-question range widens to 4-12; ground truth admits operator-private markers; deferred-prompt key spec named. v1.2 (2026-07-21) made the Phase-1 spec canonical (lane roles, ground truth, contaminant audits, deferred placeholders), added the Phase-2 output sentinel + ground-truth block and the Phase-3 sentiment-lane rule + conditional DCI tally; see the plugin CHANGELOG. v1.1 (2026-06-01) added confidence + "what would change" + live-URL rule + the keep-matrix note)  
+**Version:** 1.4 (2026-07-26 — Phase-4 verifies content before resolution and marks CONTENT-CHECK-REQUIRED; the fabrication lesson becomes three patterns plus the structural-ID diagnostic; Phase-2 forbids absence inferred from inability; the deferred-prompt spec requires one complete entry per debate side and the per-phase output contract. v1.3 (2026-07-22) Phase-2 gains the machine-checked OUTPUT FORMAT skeleton; sub-question range widens to 4-12; ground truth admits operator-private markers; deferred-prompt key spec named. v1.2 (2026-07-21) made the Phase-1 spec canonical (lane roles, ground truth, contaminant audits, deferred placeholders), added the Phase-2 output sentinel + ground-truth block and the Phase-3 sentiment-lane rule + conditional DCI tally; see the plugin CHANGELOG. v1.1 (2026-06-01) added confidence + "what would change" + live-URL rule + the keep-matrix note)  
 **Reads with:** `00-master-methodology.md`
 
 ---
@@ -73,6 +73,21 @@ Output strict JSON with these keys (this is the canonical Phase 1 output spec, v
   included) — and that set may contain nothing else. The ONLY sanctioned placeholder token
   is "<DRAFT_RECOMMENDATION>", permitted solely on the phase-4.5 Red Team entry (filled at
   Step 4.5 before hand-off).
+  A phase-2.5 Debate entry may carry NO token at all: its declared_placeholders must be the
+  empty array. Do not stage one debate template with the position left to fill — stage TWO
+  complete entries, one written FOR and one written AGAINST, each with declared_placeholders
+  [] and each with the decision statement already filled. Phase 2.5 selects a side per lane;
+  it does not substitute text. Each entry must name its own side on a line naming exactly
+  ONE of FOR or AGAINST (a generic "Position: FOR or Position: AGAINST" explanation assigns
+  neither) and must carry, in its own text, every element the Phase-2 debate gate scores the
+  output against: the position instruction, evidence + reasoning, the rebuttal, the flip
+  fact, KEY TENSION, COMMON GROUND, [REASONED], and a citation instruction requiring at
+  least two distinct live https URLs. Distinguish them by purpose: "debate-for" / "debate-against".
+  Every deferred template must also carry, in its own text, the contract its output is scored
+  against: the sentinel instruction (named inline, never on a standalone line), an https
+  citation instruction, and [REASONED]; a 2.5 entry additionally needs the Position line
+  instruction, KEY TENSION, and COMMON GROUND; a 4.5 entry additionally needs the severity
+  vocabulary KILL / MAJOR / MANAGEABLE.
 - disqualifying_sources: array of source patterns to reject
 - success_criteria: array of bullets — what a publishable answer must include
 - known_traps: array of likely failure modes for this specific topic
@@ -128,6 +143,10 @@ Requirements:
   permitted — and expected — to answer "insufficient evidence" rather than guess.
 - Where multiple sources conflict, present both positions; do not pick a winner.
 - Do not include marketing copy or vendor self-promotion as evidence.
+- A negative finding needs evidence too. If you could not read the source, report
+  [UNVERIFIED — could not access], never ABSENT, NOT-PRESENT or NOT-FOUND. Absence inferred
+  from your own inability to look is a fabrication in the other direction: it asserts
+  something about the world on the strength of something about your tooling.
 
 Output structure (markdown):
 1. TL;DR (3 bullets, each a verdict)
@@ -253,14 +272,30 @@ Below is the URL list from <conflict_map>. For each URL:
 1. Rate domain plausibility for the claim: HIGH / MEDIUM / LOW.
 2. Flag fabrication patterns: sequential/round arxiv IDs, placeholder slugs, domain mismatches,
    dead reference markers, generated-looking paths.
-3. For HIGH/MEDIUM, do not verify content — the human deep-checks the top 5 load-bearing.
+3. Mark CONTENT-CHECK-REQUIRED — never "no check needed" — for every URL whose citation
+   carries quoted speech attributed to a named person, a named author, a specific date, or a
+   figure with a stated metric definition. Domain plausibility says nothing about any of
+   those: the commonest fabrication is a real, resolving URL with invented content behind it,
+   so a HIGH plausibility rating is not permission to skip the content comparison. For the
+   remainder, content checking may be deferred to the human deep-check of the top 5
+   load-bearing.
 4. For LOW, recommend rejection.
-Output a markdown table: URL | Plausibility | Verdict | Notes.
+5. Apply the structural-ID check where the platform encodes one: Reddit post IDs are
+   7-character base-36 strings; Hacker News item IDs rise monotonically with date, so an ID
+   far below one from a known-older story cannot be the recent item it is cited as; a run of
+   near-sequential digits across several citations is a generator signature.
+Output a markdown table: URL | Plausibility | Content check | Verdict | Notes.
 ```
 
 **Manual verification (the highest-value 10 minutes):** open the top 5 load-bearing citations; for any specific stat or paper, **resolve the primary** (arXiv ID, DOI) and confirm it says what was claimed; for academic claims use a cross-check service. Move survivors to `04-verified-sources.md`, rejects to `04-rejected.md` (keep as audit trail).
 
-> 🆕 v1.1 lesson: dead reference markers (e.g., `【n†…】`) and suspiciously sequential arxiv IDs were the two fabrication patterns that actually fired this cycle — weight them heavily.
+> 🆕 v1.4 lesson — the **three** fabrication patterns that have actually fired, in order of what they cost:
+>
+> 1. **A real, resolving URL with invented content behind it.** The domain is right, the page exists, and it does not contain the quote, the author, the date, or the figure attributed to it. Four of four checked social citations on one live run, including the sole citation for the only direct evidence behind that dossier's central verdict. Liveness checking is blind to this by construction — only a content comparison catches it, which is why Phase 4 fetches and compares before it considers resolution.
+> 2. **Dead reference markers** (`[n]`, `[^n]`, `【n†…】`) standing in for URLs — the export looks cited and carries nothing resolvable. Caught mechanically by the Phase-2 gate's citation census.
+> 3. **Suspiciously sequential or round arXiv IDs** — cheap to spot, still worth the glance.
+>
+> **The cheap structural-ID diagnostic (do this before spending a fetch).** Several platforms encode structure in their IDs, and fabricated IDs get it wrong for free: **Reddit** post IDs are 7-character base-36 strings — not 6, not 9, never a word, never a character outside `[0-9a-z]`; **Hacker News** item IDs are monotonic with date, so an ID materially smaller than one from a known-older story, or larger than today's frontier, cannot be the story claimed; **any run of near-sequential digits across several citations** is a generator signature, not a reading list. This is the only check that still works when the source class cannot be fetched at all — which matters, because the classes richest in quotable user speech are often exactly the classes a given surface cannot reach.
 
 ---
 

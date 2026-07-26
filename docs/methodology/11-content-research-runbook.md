@@ -35,7 +35,7 @@ The two runbooks share the same 6-phase pipeline, the same skills (`research-kic
 | Market / product research with affiliate links | This runbook | 03 (primary, when video leads) with `wordpress_article` as the additional render; otherwise 06 alone, with a separate kickoff for a video | Blog + video with affiliate links |
 | Personal / market decision research (best laptop, life decisions, career moves) | This runbook | 13-overlay-deliberation-modes.md (primary — Decision Brief output) | Decision Brief the operator acts on |
 
-If a project has multiple output formats, the primary render **derives from the selected use case** — v1.3 replaces the old most-demanding-overlay rule with a closed matrix. Supported additional Phase-6 renders: YouTube (use case 2) → `wordpress_article`; Health (use case 6) → `youtube_script`, `wordpress_article`, `ebook_chapter`; Decision research (use case 8) → `deck_and_screencast`; every other use case → none. A video **and** a deck wanted from the outset normalizes to use case 7 (overlay 08). Any other combination gets a separate kickoff. See "Multi-deliverable projects" below.
+If a project has multiple output formats, the primary render **derives from the selected use case** — v1.3 replaces the old most-demanding-overlay rule with a closed matrix. Supported additional Phase-6 renders: YouTube (use case 2) → `wordpress_article`; Health (use case 6) → `youtube_script`, `wordpress_article`, `ebook_chapter`; Decision research (use case 8) → `deck_and_screencast`, `html_report`; every other use case → none. A video **and** a deck wanted from the outset normalizes to use case 7 (overlay 08). Any other combination gets a separate kickoff. See "Multi-deliverable projects" below.
 
 ---
 
@@ -253,7 +253,7 @@ These show up as Cowork suggestions and need to be overridden when wrong:
 
 ### Phase 2 sanity check (3 minutes — same as software dev)
 
-Open each `02-*.md` and verify:
+Open each `02-<lane>.md` lane output (and `02-topup-<lane>.md` where a top-up ran — never a `02-<lane>.raw-export.md` audit copy) and verify:
 1. No truncation
 2. Required structure: TL;DR, findings with URLs, "what would change your recommendation," "what this answer does NOT cover"
 3. Citation density adequate
@@ -322,7 +322,7 @@ overlay's format — the primary overlay derives from the selected use case
 changing the primary render). Allowed additional renders are handled in 
 Phase 6 as transforms of this dossier.
 
-[Paste all 02-*.md, 03-conflict-map.md, 04-verified-sources.md, 
+[Paste every 02-<lane>.md and 02-topup-<lane>.md — never a 02-<lane>.raw-export.md audit copy — plus 03-conflict-map.md, 04-verified-sources.md,
 04-rejected.md inline below]
 ```
 
@@ -395,7 +395,7 @@ Upload all inputs + agent outputs + conflict map + verified sources + dossier. R
 
 ### Multi-deliverable projects
 
-Pattern (v1.3): produce one Phase-5 dossier in the **selected use case's** format, then transform into the matrix-allowed additional renders in Phase 6. The closed matrix: YouTube (2) → `wordpress_article`; Health (6) → `youtube_script`, `wordpress_article`, `ebook_chapter`; Decision research (8) → `deck_and_screencast`; every other use case → none. Combinations outside the matrix get a separate kickoff.
+Pattern (v1.3): produce one Phase-5 dossier in the **selected use case's** format, then transform into the matrix-allowed additional renders in Phase 6. The closed matrix: YouTube (2) → `wordpress_article`; Health (6) → `youtube_script`, `wordpress_article`, `ebook_chapter`; Decision research (8) → `deck_and_screencast`, `html_report`; every other use case → none. Combinations outside the matrix get a separate kickoff.
 
 **🆕 Special case — combined deck + screencast (v1.1):** If your project needs BOTH a slide deck AND a screencast/YouTube video from the same content (which is most of your presentations going forward), use the unified `08-overlay-deck-and-screencast.md` from the start — normalize to use case 7 rather than storing two renders. Don't run overlays 03 and 04 separately — overlay 08 produces a single Markdown source that renders to both formats and eliminates drift. Marp renders the deck; Descript captures and edits the screencast.
 
@@ -405,7 +405,7 @@ Pattern (v1.3): produce one Phase-5 dossier in the **selected use case's** forma
 2. Load the target overlay's Phase-5 output block and Phase-6 routing instructions.
 3. Gather target-only publication settings at Phase 6. For an additional `wordpress_article`, the kickoff must already have established a normal-web SERP provider — select Perplexity before Grok deterministically — and Phase 6 creates the lightweight preparation artifact `06a-wordpress_article-prep.md`, used **only** for query intent, headings, schema, CTA, and competitive structure (it is not the primary-SEO overlay's pre-Phase-1 research brief).
 4. Transform factual content **only** from `05-dossier.md`, `03-conflict-map.md`, and the verified/rejected-source artifacts. Target-preparation metadata may shape presentation but may introduce **no factual claim**. If preparation reveals a material evidence/coverage gap, stop this render and recommend a separate kickoff rather than researching inside Phase 6.
-5. Save as `06-<render-id>.md` (preparation as `06a-<render-id>-prep.md` when needed); retain source-profile safety requirements — especially health evidence tags/disclaimer and decision risks/conditions.
+5. Save as `06-<render-id>.md` (preparation as `06a-<render-id>-prep.md` when needed); the sole extension exception is `html_report`, a self-contained single-file `06-html_report.html`. Retain source-profile safety requirements — especially health evidence tags/disclaimer and decision risks/conditions; an `html_report` additionally reproduces the brief's stated limitations and confidence level and contains no `LOCAL-ONLY` string, because a summary that drops the hedges manufactures false certainty and an HTML report is the artifact most likely to be shared onward.
 6. Apply the target overlay's existing routing instructions with `06-<render-id>.md` substituted wherever they consume the Phase-5 dossier.
 
 **Health → `ebook_chapter` exception:** use overlay 05's **chapter prose/output schema only** plus the health overlay's evidence-strength adaptation, producing one `06-ebook_chapter.md`. Do not invoke overlay 05's full-book Phase-6 assembly, and do not require or fabricate `00-book-outline.md`, `00-book-meta.md`, or `chapter-*` artifacts — this is a chapter derivative, not an ebook project.
@@ -446,7 +446,7 @@ Same rule as software dev. They surface peer-reviewed papers, which don't help w
 
 ### 8. The personal-research case (best laptop, life decisions) is still worth a dossier
 
-When the deliverable is "I'll decide myself," the dossier is for *you*, not for publication. Use `13-overlay-deliberation-modes.md` as the **primary** overlay: its Phase 1 demands verdicts rather than descriptions, its Debate and Red Team modes exist for exactly this pressure-testing, and its Decision Brief is the artifact you actually want — skip Phase 6 publishing entirely. (Before v1.1 this use case borrowed overlay 06's structure as the most decision-oriented available; overlay 13 now supersedes that for use case 8.)
+When the deliverable is "I'll decide myself," the dossier is for *you*, not for publication. Use `13-overlay-deliberation-modes.md` as the **primary** overlay: its Phase 1 demands verdicts rather than descriptions, its Debate and Red Team modes exist for exactly this pressure-testing, and its Decision Brief is the artifact you actually want — skip Phase 6 publishing entirely, unless you have to hand the decision to someone else, in which case the matrix sanctions exactly two derivatives: `deck_and_screencast` when it needs presenting, `html_report` when it only needs reading. (Before v1.1 this use case borrowed overlay 06's structure as the most decision-oriented available; overlay 13 now supersedes that for use case 8.)
 
 ### 9. Deck + screencast = one source of truth, not two (v1.1 addition)
 

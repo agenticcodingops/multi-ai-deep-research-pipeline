@@ -165,8 +165,20 @@ selected).
 |---|---|
 | YouTube (2) | `wordpress_article` |
 | Health (6) | `youtube_script`, `wordpress_article`, `ebook_chapter` |
-| Decision research (8) | `deck_and_screencast` |
+| Decision research (8) | `deck_and_screencast`, `html_report` |
 | Every other situation | none |
+
+- **`html_report` (use case 8 only)** is the one derivative whose output is not
+  `06-<render-id>.md`: a **self-contained single file** saved as
+  `06-html_report.html`, with no external stylesheet, script, font, or image
+  dependency. It must reproduce the Decision Brief's **stated limitations and
+  confidence level** — a visual summary that drops them manufactures false
+  certainty, the single biggest risk of rendering a hedged verdict attractively
+  — and must contain **no `LOCAL-ONLY` string**, because an HTML report is the
+  artifact most likely to be shared onward. Generation is the ordinary
+  derivative rule: factual content only from `05-dossier.md`,
+  `03-conflict-map.md`, and the verified/rejected-source artifacts; styling is
+  presentation, never a new claim.
 
 - **Deliberation-mode derivation:** union of every matching row of overlay
   13's mode selector (the normative source), normalized to pipeline order
@@ -1003,9 +1015,9 @@ concatenated core + all-eight-profile record arrays, in shipped order
         8
       ]
     },
-    "question": "Should Phase 6 also derive a deck + screencast from the Decision Brief?",
+    "question": "Which additional renders should Phase 6 derive from the Decision Brief?",
     "header": "Extras",
-    "multiSelect": false,
+    "multiSelect": true,
     "options": [
       {
         "value": [],
@@ -1013,11 +1025,14 @@ concatenated core + all-eight-profile record arrays, in shipped order
         "description": "The Decision Brief is the terminal artifact."
       },
       {
-        "value": [
-          "deck_and_screencast"
-        ],
-        "label": "Add deck + screencast",
+        "value": "deck_and_screencast",
+        "label": "Deck + screencast",
         "description": "One Marp source rendered to both formats for sharing the decision."
+      },
+      {
+        "value": "html_report",
+        "label": "HTML report",
+        "description": "Self-contained 06-html_report.html keeping the stated limitations and confidence level; no LOCAL-ONLY string."
       }
     ]
   },
@@ -1756,7 +1771,8 @@ identifiers, or unrelated config content.
               "wordpress_article",
               "youtube_script",
               "ebook_chapter",
-              "deck_and_screencast"
+              "deck_and_screencast",
+              "html_report"
             ]
           },
           "x-acquisition": "optional",

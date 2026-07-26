@@ -34,7 +34,7 @@ Use the Adjudicator-style Decision Brief schema from the "Output — Adjudicator
 
 ### Phase 6 — output routing
 
-The Decision Brief is the **terminal artifact**: it exists to settle the operator's own decision, and routing ends when the operator records the GO / NO-GO / GO-WITH-CONDITIONS verdict and executes the Next Action. Where a secondary deliverable is wanted (sharing or presenting the decision), route the same `05-dossier.md` through another overlay's Phase 6 rather than re-researching — `08-overlay-deck-and-screencast.md` is the common case when the decision needs a deck.
+The Decision Brief is the **terminal artifact**: it exists to settle the operator's own decision, and routing ends when the operator records the GO / NO-GO / GO-WITH-CONDITIONS verdict and executes the Next Action. Where a secondary deliverable is wanted (sharing or presenting the decision), route the same `05-dossier.md` through the closed matrix's Phase-6 derivatives rather than re-researching: `08-overlay-deck-and-screencast.md` when the decision needs **presenting**, and `html_report` when it only needs to be **read** — one self-contained `06-html_report.html`, reproducing the brief's stated limitations and confidence level and containing no `LOCAL-ONLY` string. Both are matrix-sanctioned Step 6.3 derivatives; the verdict, the conditions, and the Next Action still come from the Decision Brief, never from the render.
 
 ---
 
@@ -70,9 +70,11 @@ Attack from these six vectors (cover all; go deepest on the 1-2 assigned to you)
 5. OPERATIONAL— team, dependencies, execution risk, what breaks under load
 6. EDGE CASES — viral spikes, misuse/abuse, cannibalisation, international/cultural
 
+Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line.
+
 For each finding: state the failure, its severity (KILL / MAJOR / MANAGEABLE), and the
-evidence or reasoning. Cite a live URL where the claim is factual; tag reasoning as
-[REASONED]. End with the single most likely cause of failure.
+evidence or reasoning. Cite a live, resolvable https URL where the claim is factual; tag
+reasoning as [REASONED]. End with the single most likely cause of failure.
 ```
 
 **Processing the output (manual):** 1) sort findings by severity (KILL > MAJOR > MANAGEABLE); 2) flag the ones you hadn't considered — those are the real blind spots; 3) ask the fan-out (normal mode) "given these red-team findings, how would you fix the top 3?"; 4) capture into the Decision Brief (below); 5) revise and re-red-team.
@@ -96,7 +98,7 @@ My current leaning (so counter-arguments are targeted): <if any>
 
 Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line, then on the
 next line write exactly Position: FOR or Position: AGAINST (your assigned side), then produce:
-(1) your position statement; (2) evidence + reasoning (cite live https URLs; tag [REASONED]);
+(1) your position statement; (2) evidence + reasoning (cite at least two distinct live https URLs; tag [REASONED]);
 (3) rebuttal to the strongest opposing argument; (4) the one fact that, if true, would flip you.
 After both sides: name the KEY TENSION and the COMMON GROUND.
 ```
@@ -137,7 +139,8 @@ For decision dossiers, replace (or append to) the normal Chairman output with th
 3. UNRESOLVED DISAGREEMENTS — genuine conflicts, classified by type; do not fake consensus.
 4. UNCONTESTED RISKS — blind spots only ONE agent surfaced that no one rebutted (source + mitigation).
 5. CORRECTION LEDGER — every factual error one agent caught in another: issue / source / severity / action.
-6. NEXT ACTION — exactly one concrete, executable step.
+6. STATED LIMITATIONS — every gap carried out of Step 4.7 as a LIMITATION, plus every source class that could not be verified on this surface. Name them; do not fold them into caveats. Confidence in item 1 must be consistent with this list.
+7. NEXT ACTION — exactly one concrete, executable step.
 + Carry all Chairman discipline rules (claim tags, ≤15-word quotes, no rejected URLs, CoVe self-check).
 </output_format>
 ```
@@ -168,7 +171,7 @@ A lightweight quantitative layer on the Phase-3 contradiction matrix: per round,
 **A mode selected here is mandatory and blocking, not advisory.** The orchestrator wires Debate to Phase 2.5 (its Step 2.5) and Red Team to Phase 4.5 (its Step 4.5) and may not proceed past those points while a selected mode has not run. Skipping a selected mode is a pipeline defect, not an option; cancelling one requires an explicit operator decision logged in `00-context.md`.
 
 ## Quality bar
-Reject a decision dossier that: resolves a factual dispute without a cited source; "resolves" a strategic dispute by picking the more confident model; lacks an Uncontested-Risks section (the blind-spot catch is the whole point); or ran Debate without the decorrelated lane present.
+Reject a decision dossier that: resolves a factual dispute without a cited source; "resolves" a strategic dispute by picking the more confident model; lacks an Uncontested-Risks section (the blind-spot catch is the whole point); lacks a Stated-Limitations section, or carries a confidence level its own declared gaps do not support — a HIGH-confidence recommendation sitting on three unresolved gaps is not a confident answer, it is an unread one; or ran Debate without the decorrelated lane present.
 
 ## Practitioner notes
 - These modes suit decision-oriented dossiers and client-facing consultancy work especially well — the Decision Brief is a client-ready artifact.

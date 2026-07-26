@@ -200,7 +200,7 @@
     {
       "phase": 4.5,
       "purpose": "Adversarial review of the draft recommendation",
-      "prompt_template": "Challenge the following draft verdict: <DRAFT_RECOMMENDATION>. List the three strongest objections, tag each [HIGH], [MEDIUM], or [LOW], and cite a LIVE, resolvable URL for every objection.",
+      "prompt_template": "Red-team the following draft verdict: <DRAFT_RECOMMENDATION>. Begin your response with the exact line ===BEGIN LANE OUTPUT=== on its own line. List the three strongest objections, rate each KILL, MAJOR, or MANAGEABLE, tag reasoned judgements [REASONED], and cite a live, resolvable https URL for every factual objection.",
       "declared_placeholders": [
         "<DRAFT_RECOMMENDATION>"
       ]

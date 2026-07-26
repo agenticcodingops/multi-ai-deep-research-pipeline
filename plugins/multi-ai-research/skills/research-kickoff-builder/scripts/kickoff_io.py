@@ -1153,6 +1153,71 @@ def _config_template(dossier_root):
 _ACCESS_LINE_RE = re.compile(r"^- ([A-Za-z ]+?): (.*)$")
 
 
+def _config_hidden_mask(text):
+    """Blank HTML comments and fenced code blocks, preserving newlines.
+
+    Local duplicate of the orchestrator validator's mask_hidden — runtime
+    scripts may not import across skill directories; the shared-corpus drift
+    test in test_contract_drift.py locks the two grammars together. Without
+    it, merge-config located labels by raw line scan: it could rewrite a
+    bullet INSIDE a comment, report MERGED, and the entry stayed missing on
+    the next validation (review finding 8).
+
+    The scan is left to right: whichever opener appears first claims text
+    through its own closer, and markers inside a claimed region are inert —
+    a ``` line inside a comment is not a fence, and a `<!--` inside a fence
+    is not a comment. Computing the two span sets independently over the raw
+    text let either marker poison the mask through EOF (PR review).
+    Unterminated regions run to EOF."""
+    fence_lines = []
+    position = 0
+    for line in text.splitlines(True):
+        stripped = line.lstrip(" \t")
+        if len(line) - len(stripped) <= 3 and \
+                stripped.startswith(("```", "~~~")):
+            fence_lines.append((position, position + len(line)))
+        position += len(line)
+    spans = []
+    pos = 0
+    fence_index = 0
+    while True:
+        while fence_index < len(fence_lines) and \
+                fence_lines[fence_index][0] < pos:
+            fence_index += 1
+        comment_at = text.find("<!--", pos)
+        fence_at = fence_lines[fence_index][0] \
+            if fence_index < len(fence_lines) else -1
+        if comment_at == -1 and fence_at == -1:
+            break
+        if fence_at == -1 or (comment_at != -1 and comment_at < fence_at):
+            close = text.find("-->", comment_at + 4)
+            end = len(text) if close == -1 else close + 3
+            spans.append((comment_at, end))
+            pos = end
+        elif fence_index + 1 < len(fence_lines):
+            spans.append((fence_at, fence_lines[fence_index + 1][1]))
+            pos = fence_lines[fence_index + 1][1]
+        else:
+            spans.append((fence_at, len(text)))
+            break
+    if not spans:
+        return text
+    chars = list(text)
+    for start, end in spans:
+        for i in range(max(0, start), min(len(chars), end)):
+            if chars[i] != "\n":
+                chars[i] = " "
+    return "".join(chars)
+
+
+def _config_active_lines(text):
+    """The config's lines with hidden (commented/fenced) lines blanked.
+
+    Same length and order as text.split("\n"), so matching runs on the
+    active view while edits land on the original lines by index."""
+    return _config_hidden_mask(text).split("\n")
+
+
 def _validate_access_entry(agent, entry):
     findings = []
     vk._check_schema(entry, vk._access_entry_site(agent), "", findings,
@@ -1261,9 +1326,23 @@ def cmd_merge_config(args):
         with open(config_path, "r", encoding="utf-8") as fh:
             original = fh.read()
         lines = original.split("\n")
+        # All matching runs on the ACTIVE view (comments and fences blanked);
+        # edits land on the original lines by index. A bullet inside a
+        # comment is documentation, and rewriting it while reporting MERGED
+        # left the real entry missing on the next validation.
+        active = _config_active_lines(original)
+
+        heading_count = sum(1 for line in active
+                            if line.strip() == CONFIG_ACCESS_HEADING)
+        if heading_count > 1:
+            return _emit(_report(
+                "error", "merge-config", "AMBIGUOUS_SECTION",
+                paths={"config": config_path},
+                message="%d active '%s' sections; merge them before updating"
+                        % (heading_count, CONFIG_ACCESS_HEADING)), 1)
 
         label_counts = {}
-        for line in lines:
+        for line in active:
             m = _ACCESS_LINE_RE.match(line.strip())
             if m and m.group(1) in vk.CONFIG_LABELS.values():
                 label_counts[m.group(1)] = label_counts.get(m.group(1),
@@ -1274,7 +1353,7 @@ def cmd_merge_config(args):
                     "error", "merge-config", "DUPLICATE_LINE",
                     paths={"config": config_path},
                     message="duplicate known line for %r" % label), 1)
-        for line in lines:
+        for line in active:
             m = _ACCESS_LINE_RE.match(line.strip())
             if m and m.group(1) in vk.CONFIG_LABELS.values():
                 value = m.group(2).strip()
@@ -1291,14 +1370,14 @@ def cmd_merge_config(args):
 
         if root_update is not None:
             replaced = False
-            for idx, line in enumerate(lines):
+            for idx, line in enumerate(active):
                 if line.startswith("Dossier root:"):
                     lines[idx] = "Dossier root: %s" % root_update
                     replaced = True
                     break
             if not replaced:
                 header_idx = next(
-                    (i for i, l in enumerate(lines)
+                    (i for i, l in enumerate(active)
                      if l.strip() == CONFIG_HEADER), None)
                 insert_at = header_idx + 1 if header_idx is not None else 0
                 lines.insert(insert_at, "")
@@ -1334,10 +1413,14 @@ def cmd_merge_config(args):
 
 def _apply_access_updates(lines, access_updates):
     for agent, entry in access_updates.items():
+        # Recomputed per agent: insertions shift line indices, and matching
+        # must stay on the active view (a commented bullet is documentation,
+        # never an update target).
+        active = _config_active_lines("\n".join(lines))
         label = vk.CONFIG_LABELS[agent]
         new_line = "- %s: %s" % (label, canonical_json(entry))
         replaced = False
-        for idx, line in enumerate(lines):
+        for idx, line in enumerate(active):
             m = _ACCESS_LINE_RE.match(line.strip())
             if m and m.group(1) == label:
                 existing = m.group(2).strip()
@@ -1353,15 +1436,15 @@ def _apply_access_updates(lines, access_updates):
                 break
         if not replaced:
             heading_idx = next(
-                (i for i, l in enumerate(lines)
+                (i for i, l in enumerate(active)
                  if l.strip() == CONFIG_ACCESS_HEADING), None)
             if heading_idx is None:
                 lines.extend(["", CONFIG_ACCESS_HEADING, new_line])
             else:
                 insert_at = heading_idx + 1
                 while insert_at < len(lines) and (
-                        not lines[insert_at].strip()
-                        or _ACCESS_LINE_RE.match(lines[insert_at].strip())):
+                        not active[insert_at].strip()
+                        or _ACCESS_LINE_RE.match(active[insert_at].strip())):
                     insert_at += 1
                 lines.insert(insert_at, new_line)
     return lines

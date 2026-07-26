@@ -43,8 +43,10 @@ If the project is hybrid (multiple deliverables wanted), the primary deliverable
 |---|---|
 | YouTube (use case 2) | `wordpress_article` |
 | Health (use case 6) | `youtube_script`, `wordpress_article`, `ebook_chapter` |
-| Decision research (use case 8) | `deck_and_screencast` |
+| Decision research (use case 8) | `deck_and_screencast`, `html_report` |
 | Every other use case | none |
+
+`html_report` is decision research's readable form — the one render whose output is not `06-<render-id>.md` but a self-contained single file, `06-html_report.html`. It must reproduce the brief's stated limitations and confidence level, and it must carry no `LOCAL-ONLY` string: a summary that drops the hedges manufactures false certainty, and an HTML report is the artifact most likely to be shared onward.
 
 If the user wants a video **and** a deck from the outset, normalize to use case 7 (`08-overlay-deck-and-screencast.md` — one source renders to both); `presentation_deck` is not a YouTube additional render. Any combination outside the matrix gets a **separate kickoff** rather than an improvised Phase-6 branch — converting a normal dossier into a full ebook, or a non-health dossier into a health protocol, requires different Phase 1–4 work and is not "rendering."
 
@@ -164,7 +166,7 @@ Common for high-effort topics — research once, route to multiple destinations.
 
 1. The primary render **derives from the selected use case** — run Phase 1–5 with that use case's overlay.
 2. Check the wanted extra deliverables against the Step-1 matrix. A combination outside it gets a separate kickoff (recommend the decision-first or research-first order that lets the second kickoff consume the first's outputs as classified inputs).
-3. For each allowed additional render, Phase 6 transforms — it does not re-research: load the target overlay's Phase-5 output block and Phase-6 routing; transform factual content **only** from `05-dossier.md`, `03-conflict-map.md`, and the verified/rejected-source artifacts (no new factual claims); save as `06-<render-id>.md`; then apply the target overlay's routing with that file substituted wherever it consumes the Phase-5 dossier. If preparation reveals a material evidence/coverage gap, stop that render and recommend a separate kickoff.
+3. For each allowed additional render, Phase 6 transforms — it does not re-research: load the target overlay's Phase-5 output block and Phase-6 routing; transform factual content **only** from `05-dossier.md`, `03-conflict-map.md`, and the verified/rejected-source artifacts (no new factual claims); save as `06-<render-id>.md` — `html_report` is the sole extension exception, a self-contained `06-html_report.html` that keeps the brief's stated limitations and confidence level and carries no `LOCAL-ONLY` string; then apply the target overlay's routing with that file substituted wherever it consumes the Phase-5 dossier. If preparation reveals a material evidence/coverage gap, stop that render and recommend a separate kickoff.
 
 ---
 

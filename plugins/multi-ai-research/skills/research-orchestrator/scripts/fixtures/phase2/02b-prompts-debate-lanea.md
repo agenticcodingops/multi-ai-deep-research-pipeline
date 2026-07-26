@@ -2,6 +2,8 @@
 
 Project: choosing the best static site generator for a hobby photography blog.
 
+You are assigned the position: FOR.
+
 You argued FOR the image-pipeline generator; your counterpart argued AGAINST it.
 Read the opposing case in full before replying, then produce, in order: your
 Position (FOR or AGAINST, restated), your strongest Evidence with reasoning, a

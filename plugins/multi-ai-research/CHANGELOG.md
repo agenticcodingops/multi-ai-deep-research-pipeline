@@ -5,6 +5,190 @@ version line (the master methodology and corrected overlays are v1.3 as of plugi
 1.3.0; docs 01 and 11 were already v1.3 since plugin 1.2.0); the two tracks are
 independent — a plugin release may bump one, the other, or both.
 
+## 1.3.1 — 2026-07-26 — pipeline defect-fix release
+
+No features. A second live run of 1.3.0 (all six phases plus Debate, Red Team and a
+mid-run top-up) produced 35 process findings; the 19 MAJOR are fixed here. The
+dominant class was **silent failure** — gates reporting PASS on the wrong question —
+and the second was **no sanctioned route** for anything arriving after its phase had
+closed. Methodology docs 00, 01 and 13 go to v1.4. Suites: orchestrator 80 → 155,
+builder 216 → 229.
+
+**This release was itself adversarially reviewed before export**, and the review
+found twelve material defects in the first cut of these fixes — several of them the
+same silent-failure shape the release exists to remove. The corrections are folded
+into the entries below rather than listed as a separate release, because the flawed
+versions never shipped; where a correction reversed a mechanism (marker repair) the
+entry says so plainly. The headline lessons: a repair route authorized by a detector
+is only as safe as the detector's ability to prove a negative, and a test written by
+the author of the code inherits the author's blind spots — the review's exploits are
+now regression tests, and every new detector was mutation-checked (disable the
+mechanism, prove its test goes red).
+
+**Gates that were passing the wrong thing.**
+
+- **PF-07 — G5 could not see square-bracket placeholders.** `[SUB_QUESTION]` in a
+  staged prompt produced an all-PASS matrix and exit 0, so an unfilled prompt reached
+  the operator's browser with nothing between it and the lane; the Phase-2 gate then
+  scored a well-formed answer to the wrong question. Square brackets are the commonest
+  placeholder convention in prompt engineering, so this was the likeliest way for a
+  decomposer to emit an unfilled slot. Adds a bracket placeholder kind (broadened
+  after review to separator shapes — `[DATE/TIME]`, `[KEY: VALUE]`, `[URL(S)]`,
+  `[YES | NO]` — and one-character slots) plus `SEMANTIC_BRACKET_TAGS`, the tag
+  vocabulary the pipeline emits by construction, because exempting only the six
+  tokens visible in the fixtures would have failed every YouTube, health or spec-dev
+  project on its first real run. Fill-shaped schema slots (`[URL]`,
+  `[SOURCE TO CITE ON SCREEN]`, `[N]`, `[IMAGE: ...]`, `[HIGH/MEDIUM/LOW]`, `[P]`,
+  `[VERIFIED | CONTESTED | SINGLE-SOURCE]`) are **context-bound, not globally
+  exempt**: they pass only on a line that exists verbatim in the shipped reference
+  corpus — "The operator supplied [URL]" in free prose is an unfilled placeholder and
+  fails. The census test uses an independent finder, never the production regex (it
+  promptly found a doc token the production regex could not see).
+- **PF-25 — the Debate gate did not require a side.** `DEBATE_ELEMENTS[0]` matched any
+  short line containing the word "position", so an output with no FOR/AGAINST anywhere
+  PASSED. That defeats the defining property of position-assigned debate: nothing
+  downstream could distinguish a complying lane from one that argued its own preferred
+  opinion, and the Chairman would read two lanes' genuine views as a staged debate.
+  The element now requires exactly one side per position line — a line naming both
+  ("Position: FOR or Position: AGAINST") is the template's unresolved choice and
+  declares nothing — and **new check C8** compares the declared side against the side
+  the staged prompt assigned. After review, a staged debate prompt that assigns **no
+  single side is itself a C8 failure**, never "not applicable": the generic
+  explanation line in the shipped template used to erase the assignment and switch
+  the check off. Phase 1 enforces the same contract upstream — a staged Debate needs
+  exactly one FOR and one AGAINST template, each carrying every element the output
+  gate scores (rebuttal, flip fact, two-URL floor included), with side spellings
+  parity-locked between the two gates so Phase 1 never blocks what Phase 2 accepts.
+- **PF-13 — G6 never walked `deferred_phase_prompts`.** Debate and Red Team templates
+  are staged verbatim and their *outputs* are gated at Step 3.1, but the templates
+  themselves were checked by nothing, so a template missing KEY TENSION was discovered
+  only after running the pass on six surfaces. Adds per-phase needle sets, reported in
+  the matrix's GLOBAL column.
+- **PF-12 — multi-assignment lane files.** A lane handed several prompts in one paste
+  can answer each separately; the split took the last, discarding the rest as echo and
+  reporting a clean PASS on a fraction of the research with nothing recording the loss.
+  More than one sentinel is now a C1 failure, and Step 2.1 carries a canonical preamble
+  for multi-assignment lane files.
+- **PF-34 — no manifest.** The gate scored the files it found, so a staged-but-never-run
+  lane was invisible. Adds `--expect`, with a `debate:` prefix because lane ids collide
+  across kinds. After review the manifest is strict: an empty component (`--expect ,`)
+  is a usage error, never silently dropped — a lost lane id would convert the
+  completeness contract into best-effort — and only a file under its **canonical**
+  name satisfies an expectation (an explicitly passed `x.md` is gated ad hoc and
+  leaves `initial:x` missing).
+- **PF-35 — absence asserted from inability.** A lane declared capabilities ABSENT ten
+  times after stating it could not read the repository, manufacturing gaps rather than
+  finding them. C6 fails that combination; the Phase-2 contract requires
+  `[UNVERIFIED — could not access]` instead. The detector was rebuilt after review
+  showed the first cut wrong in both directions: it is now sentence-scoped with
+  either-order inability/source co-location (an access-verb is required, so "cannot
+  agree with the sources" is not an admission), case-insensitive on the verdict, and
+  exempts negated meta-statements ("it would be wrong to report ABSENT"), the
+  bracketed UNVERIFIED form, and absence claims carrying their own citation —
+  inability to reach source A no longer invalidates an absence evidenced from
+  source B. The PR review then hardened it twice more: heading text is scanned as a
+  claim (an admission or verdict written as a section title used to vanish with the
+  heading boundary), and the meta exemption binds to the verdict token it governs —
+  "I cannot claim it is present; it is ABSENT" no longer exempts the affirmative
+  ABSENT because an unrelated negation shares its sentence.
+- **PF-20 / PF-21 — C1's echo diagnostic, and the death of marker repair.** The
+  diagnostic defect stands as found: mandated section headings appear in prompt and
+  answer by construction, so every clean-but-unmarked export was reported as an echo;
+  there are now two verdicts with different diagnoses. The first cut of this release
+  also added a **marker-repair route** — prepend the missing sentinel when the gate's
+  echo numbers read zero — and the adversarial review killed it with a working
+  forgery: blockquote the echoed prompt, change one punctuation mark, and exact-line
+  comparison reports 0/0 while inviting the repair that then passes the whole gate.
+  **There is no repair route.** Echo comparison now canonicalizes renderer
+  transformations (blockquote/list prefixes, case, trailing punctuation) and adds a
+  word-shingle measure that survives reflow; the gate also checks for staged-prompt
+  echo **inside the answer region even when a sentinel is present**, so the historical
+  forgery fails C1 outright. A dropped marker means a re-run — the diagnostics are
+  published, and they authorize nothing.
+
+**Deliberate fixture changes** (a tightened gate legitimately invalidates an old pass):
+the phase-4.5 deferred template in nine phase-1 fixtures now carries the contract PF-13
+checks, and overlay 13's Mode 1 fence gains the sentinel line and "resolvable https URL"
+so the shipped template can satisfy it. `test_deferred_bad_token_fails` was narrowed to
+its subject; no assertion was weakened.
+
+**A validator for `research-config.md` (PF-02).** The format has three states and a
+documented trap — legacy `none` means *unknown*, not confirmed-unavailable — and no
+validator anywhere, so an operator writing `- NotebookLM: none` to mean "I don't have
+this" was silently recorded as unknown and re-asked sessions later. `validate_config.py`
+classes every entry `v1 | legacy | invalid | missing`. Legacy is loud and **not** fatal:
+Step 0.3 offers to normalize and never rewrites, and a red gate would coerce acceptance
+of any rewrite offered. After review the reader and the writer share one grammar: HTML
+comments **and fenced code blocks** are masked (a fenced `Dossier root: decoy/` was
+active configuration, and a fenced fake heading could hide the real section) — and
+after the PR review the scan is left to right, whichever opener comes first claiming
+text through its own closer, so a stray ``` inside a comment (or a `<!--` inside a
+fence) is inert instead of poisoning the mask through EOF and hiding the real
+configuration from both the validator and merge-config. The
+secret scan runs over the **whole raw file** — comments, fences, and legacy values
+included, with every match redacted so no report echoes the credential it is flagging
+— duplicate JSON keys are rejected exactly as the approved writer rejects them, and
+`kickoff_io merge-config` now matches only active lines, so it can no longer rewrite a
+bullet inside a comment, report MERGED, and leave the entry missing on the next
+validation. Dossier-root scope is classified after resolution, so `../outside` and
+symlink escapes report `outside_workspace`, not "relative".
+
+**Routes for what arrives late** (PF-16/17/19/21/33, as one doctrine). A new "re-gate
+rule" section: any artifact admitted by a gate and then changed by hand must pass that
+gate again, and the second pass is recorded — the window closes at the first lane
+output, not at the phase. Step 1.5 route (c) targeted patch; Step 2.1a late seed
+addition; Step 2.1b late input arrival with the new `scoping_only` class; Step 4.8
+targeted top-up. (A Step 3.1 marker-repair route was in the first cut of this list and
+was removed — see PF-20/PF-21 above.) After review, Step 4.8 also **reconciles**: a
+top-up appends a `## Top-up delta` section to the conflict map, records whether the
+post-top-up evidence changes the draft recommendation, and — when it does and a
+blocking mode was selected — re-runs each affected mode once against the updated draft
+before Phase 5 (per selected mode, per top-up: a top-up that invalidates both Debate
+and Red Team refreshes both, never either twice). Superseded outputs are preserved as
+`.superseded-<n>.md` audit copies whose name still matches a bare `04a-redteam-*`
+pattern — so every consumer names the exclusion instead of trusting a glob. Without
+this, a
+cost-gap top-up could flip the recommendation from A to B after Red Team had attacked
+A, and Phase 5 would proceed with the blocking mode having run on the wrong question.
+
+**Evidence posture** (PF-29/30/32/18). Step 4.2 fetches and compares before it considers
+resolution and adds `RESOLVES_ONLY`, because the dominant fabrication is a real,
+resolving URL with invented content — four of four checked social citations on one run,
+including the sole citation behind that dossier's central verdict. A source class that
+cannot be verified on this surface is carried `[UNVERIFIED]` for the whole run. New
+BLOCKING Step 4.7 disposes of every declared gap before Phase 5, and the Decision Brief
+gains STATED LIMITATIONS. Doc 00 gains "Orchestrator findings are not evidence" — no
+gate can reach a fact the chair injects into a prompt — plus the AI-chat-transcript
+input hazard and the provider export-quirks table.
+
+**PF-36 — `html_report` joins the closed matrix for use case 8**, with two constraints in
+the matrix entry (it reproduces the stated limitations and confidence level; it carries
+no `LOCAL-ONLY` string) and the matrix's sole extension exception,
+`06-html_report.html`. **Breaking, by design:** the uc8 interview question becomes
+multi-select, so `question_catalog_digest` and `sheet_instance_digest` move and every
+previously issued headless answer sheet is stale.
+
+**Adjacent fixes** the above would otherwise leave broken: Phase 5's input lists
+enumerate canonical names and exclude `02-<lane>.raw-export.md` (a historical
+marker-repair audit copy would enter the synthesis as a duplicate lane report — the
+correlated-evidence failure the pipeline exists to prevent), and after review the
+runbooks' own "paste all `02-*.md`" instructions were replaced with the same canonical
+enumerations, locked by a drift test, since a glob in a runbook feeds a repaired lane
+twice into Phase 5 or NotebookLM no matter what the orchestrator says;
+`--project-rules extra_contaminants` is wired into Step 1.5, making
+scoping-only contaminants machine-enforced; `_split_boundary`'s prompt-tail can no longer
+split on a mandated heading; Step 0.0 writes the ten `unknown` entries; `--check-urls` is
+documented at last, as a liveness smoke test conferring no VERIFIED status.
+
+**Deferred, deliberately.** PF-26 part 2 (a renderer-proof sentinel form) is a contract
+migration touching `SENTINEL_RE`, both skeleton copies, overlay 13's cue-locked fence and
+every Phase-2 fixture; it needs its own release with a dual-accept window. PF-07b
+(underscore/`XXX_` placeholders) needs a raw-text detection path, because `normalize()`
+strips `__x__` before any detector sees it and a screaming-snake regex would flag
+`SPEAKER_NOTES`. G5 still cannot see lowercase angle placeholders, so a deferred template
+can ship with `Decision: <statement>` unfilled — PF-08's prose requires both debate
+entries to be complete and says plainly that the gate cannot check it.
+
 ## 1.3.0 — 2026-07-22 — kickoff-builder release
 
 A third skill plus a versioned input interface: the pipeline can now start from a

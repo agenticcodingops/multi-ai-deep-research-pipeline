@@ -98,10 +98,14 @@ PRIMARY_RENDER_BY_USE_CASE = {
 ADDITIONAL_RENDERS_ALLOWED = {
     2: ("wordpress_article",),
     6: ("youtube_script", "wordpress_article", "ebook_chapter"),
-    8: ("deck_and_screencast",),
+    8: ("deck_and_screencast", "html_report"),
 }
+# Matrix reading order, first appearance. The fenced machine-contract copy in
+# references/kickoff-contract.md must list these in the SAME order — the drift
+# comparison canonicalizes only `required`, so enum order is load-bearing.
 ALL_ADDITIONAL_RENDER_IDS = (
-    "wordpress_article", "youtube_script", "ebook_chapter", "deck_and_screencast")
+    "wordpress_article", "youtube_script", "ebook_chapter",
+    "deck_and_screencast", "html_report")
 
 # --- regexes ----------------------------------------------------------------
 
