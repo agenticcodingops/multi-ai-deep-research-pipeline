@@ -1,0 +1,42 @@
+#!/bin/sh
+# Backstop: rescan every commit being pushed (catches amends, rebases,
+# merges, imported commits, and anything committed with --no-verify).
+. "$(git rev-parse --show-toplevel)/.githooks/branding-guard.sh"
+
+Z40=0000000000000000000000000000000000000000
+fail=0
+
+while read -r localref localsha remoteref remotesha; do
+    [ "$localsha" = "$Z40" ] && continue          # branch deletion
+    if [ "$remotesha" = "$Z40" ]; then
+        range=$(git rev-list "$localsha" --not --remotes= 2>/dev/null)
+    else
+        range=$(git rev-list "$remotesha..$localsha" 2>/dev/null)
+    fi
+
+    case "$localref" in
+        *claude*|*anthropic*)
+            printf 'BLOCKED: branch name "%s" contains a vendor name.\n' "$localref" >&2
+            fail=1 ;;
+    esac
+
+    for c in $range; do
+        short=$(git rev-parse --short "$c")
+        if ! git log -1 --format='%B' "$c" | branding_scan "commit $short"; then
+            fail=1
+        fi
+        identity_check "$(git log -1 --format='%ae' "$c")" "author"    "$short" || fail=1
+        identity_check "$(git log -1 --format='%ce' "$c")" "committer" "$short" || fail=1
+    done
+done
+
+if [ "$fail" -ne 0 ]; then
+    cat >&2 <<'EOF'
+
+Push rejected: one or more outgoing commits carry vendor/tool attribution
+or a non-approved identity. Rewrite them before pushing, e.g.:
+    git rebase -i --exec 'git commit --amend --no-edit' <base>
+EOF
+    exit 1
+fi
+exit 0

@@ -1,0 +1,18 @@
+#!/bin/sh
+# Reject commit messages carrying vendor/tool attribution.
+. "$(git rev-parse --show-toplevel)/.githooks/branding-guard.sh"
+
+if ! branding_scan "commit message" < "$1"; then
+    cat >&2 <<'EOF'
+
+Corporate policy: no third-party vendor or AI-tool names in commit metadata.
+Rewrite the message to describe only the change, then commit again.
+Do NOT use --no-verify; server-side CI enforces the same rule.
+EOF
+    exit 1
+fi
+
+# The commit must be authored by the configured human identity.
+identity_check "$(git var GIT_AUTHOR_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')" "author" || exit 1
+identity_check "$(git var GIT_COMMITTER_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')" "committer" || exit 1
+exit 0

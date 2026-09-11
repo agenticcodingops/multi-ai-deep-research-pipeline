@@ -1,0 +1,5 @@
+# Approved human commit identities (author + committer email), one per line.
+# Any commit whose author or committer email is not listed here is rejected
+# by .githooks/commit-msg and .githooks/pre-push.
+# Lines starting with # are ignored. Matching is case-insensitive and exact.
+hassan.abbas@agenticcodingops.com

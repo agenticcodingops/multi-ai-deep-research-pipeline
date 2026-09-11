@@ -1,0 +1,71 @@
+name: Commit hygiene
+
+# Server-side enforcement of the authorship policy in AGENTS.md.
+# Local hooks can be skipped with --no-verify; this check cannot.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  scan:
+    name: No vendor attribution in commit metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine commit range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base='${{ github.event.pull_request.base.sha }}'
+            head='${{ github.event.pull_request.head.sha }}'
+          else
+            base='${{ github.event.before }}'
+            head='${{ github.sha }}'
+          fi
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            range="$head"          # new branch: scan just the tip's new commits
+            echo "list=$(git rev-list -n 50 $head | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          else
+            echo "list=$(git rev-list $base..$head | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Scan commit messages and identities
+        run: |
+          . ./.githooks/branding-guard.sh
+          fail=0
+          for c in ${{ steps.range.outputs.list }}; do
+            short=$(git rev-parse --short "$c")
+            if ! git log -1 --format='%B' "$c" | branding_scan "commit $short"; then fail=1; fi
+            identity_check "$(git log -1 --format='%ae' "$c")" "author"    "$short" || fail=1
+            identity_check "$(git log -1 --format='%ce' "$c")" "committer" "$short" || fail=1
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Commit metadata contains prohibited vendor/tool attribution. See AGENTS.md."
+            exit 1
+          fi
+          echo "All scanned commits are clean."
+
+      - name: Scan branch and PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          . ./.githooks/branding-guard.sh
+          fail=0
+          printf '%s\n' "$HEAD_REF"  | branding_scan "branch name" || fail=1
+          printf '%s\n' "$PR_TITLE"  | branding_scan "PR title"    || fail=1
+          printf '%s\n' "$PR_BODY"   | branding_scan "PR body"     || fail=1
+          [ "$fail" -eq 0 ] || { echo "::error::PR metadata contains prohibited vendor attribution."; exit 1; }
