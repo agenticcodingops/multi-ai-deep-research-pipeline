@@ -11,6 +11,7 @@ on:
       - 'docs/methodology/**'
       - '.claude-plugin/**'
       - '.github/workflows/**'
+      - 'tests/**'
       - '.gitattributes'
   pull_request:
     paths:
@@ -18,6 +19,7 @@ on:
       - 'docs/methodology/**'
       - '.claude-plugin/**'
       - '.github/workflows/**'
+      - 'tests/**'
       - '.gitattributes'
   workflow_dispatch:
 
@@ -54,6 +56,15 @@ jobs:
       - name: Builder suite (validator, io helper, contract drift, golden loops)
         shell: bash
         run: python -m unittest discover -s plugins/multi-ai-research/skills/research-kickoff-builder/scripts -v
+
+      # The guard in the code-review workflow bounds one shell command. This test extracts it from
+      # the workflow, so the guard that ships is the guard that is tested, and checks that every
+      # command it accepts runs as exactly one call in real bash. Linux only: it needs node and
+      # a POSIX shell, and a missing tool fails here rather than skipping.
+      - name: Code-review guard (shell parsing checked against real bash)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_review_comment_guard.py' -v
 
       - name: Golden validator CLI (exit 0, result pass)
         shell: bash
