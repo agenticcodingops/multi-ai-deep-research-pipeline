@@ -73,15 +73,26 @@ accepted proposal through a separate PR:
    override, add a tool trailer, bypass hooks or change the allowlist.
 3. Open a replacement PR against `master`, link the original proposal and run all
    required checks and a substantive review against the replacement's current
-   head. Merge only under the ownership and waiting rules above.
+   head. After the ownership and waiting rules above are satisfied, the authorized
+   merger locally fast-forwards `master` to that exact reviewed head and makes an
+   ordinary push with hooks enabled. This creates no merge/squash/rebase commit
+   and preserves the reviewed author and committer identities. Verify every new
+   commit against the allowlist before pushing. Do not use a server-created merge
+   or force-push `master`. Recheck branch rules first; if they prohibit this path,
+   stop for an operator decision without bypassing them. If `master` has diverged,
+   update the replacement branch and repeat checks, review and the waiting period
+   for its new head rather than merging an unreviewed result.
 4. Close the original bot PR with a link to the accepted replacement and its
    disposition. Its failing identity check is not a merge candidate and is never
    waived. If the replacement is declined, record that reason on both proposals.
 
 The review workflow currently runs without publishing its verdict; a successful
 job alone is not a substantive current-head review. No real scheduled bot PR has
-yet proved this delivery path end to end. Branch-protection details could not be read with
-the current credentials (HTTP 403); no settings were changed.
+yet proved this delivery path end to end. On 2026-11-09 the branch API reported
+`master` as unprotected, and the active branch-rules and ruleset APIs returned
+empty arrays, permitting the ordinary fast-forward delivery path above under the
+observed configuration. The detailed protection endpoint returned HTTP 403;
+no settings were changed. Recheck the effective configuration before each delivery.
 
 ```mermaid
 flowchart LR
