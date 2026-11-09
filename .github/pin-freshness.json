@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/agenticcodingops/auto-code-scanning/25f0b8722593e588ef573858bc46e1df9d7a1804/schemas/pin-freshness.schema.json",
+  "pins": [
+    {
+      "id": "review-action",
+      "locations": [
+        {"file": ".github/workflows/claude-code-review.yml", "pattern": "uses: anthropics/claude-code-action@(?P<value>[0-9a-f]{40})"},
+        {"file": ".github/workflows/claude-code-review.yml", "pattern": "uses: anthropics/claude-code-action@[^\\s]+ # (?P<value>v[^\\s]+)"},
+        {"file": ".github/workflows/claude.yml", "pattern": "uses: anthropics/claude-code-action@(?P<value>[0-9a-f]{40})"},
+        {"file": ".github/workflows/claude.yml", "pattern": "uses: anthropics/claude-code-action@[^\\s]+ # (?P<value>v[^\\s]+)"}
+      ],
+      "source": {"type": "github_tags", "repo": "anthropics/claude-code-action"},
+      "precondition": "Re-measure before bumping this pin, and before loosening the guard step above: the plugin's `gh pr comment` grant is honoured on every CLI version measured, so the boundary rests on that guard."
+    },
+    {
+      "id": "freshness-platform",
+      "locations": [
+        {"file": ".github/workflows/pin-freshness.yml", "pattern": "uses: agenticcodingops/auto-code-scanning/\\.github/workflows/pin-freshness\\.yml@(?P<value>[0-9a-f]{40})"},
+        {"file": ".github/workflows/pin-freshness.yml", "pattern": "uses: agenticcodingops/auto-code-scanning/[^\\s]+ # (?P<value>v[^\\s]+)"},
+        {"file": ".github/workflows/pin-freshness.yml", "pattern": "scanning-repo-ref: (?P<value>[0-9a-f]{40})"},
+        {"file": ".github/pin-freshness.json", "pattern": "\"\\$schema\": \"https://raw\\.githubusercontent\\.com/agenticcodingops/auto-code-scanning/(?P<value>[0-9a-f]{40})/schemas/pin-freshness\\.schema\\.json\""}
+      ],
+      "source": {"type": "github_tags", "repo": "agenticcodingops/auto-code-scanning"}
+    },
+    {
+      "id": "python-first-test-lane",
+      "locations": [{"file": ".github/workflows/ci.yml", "pattern": "python: \\['(?P<value>[^']+)', '[^']+'\\]"}],
+      "source": {"type": "github_tags", "repo": "python/cpython"},
+      "policy": "minimum"
+    },
+    {
+      "id": "python-second-test-lane",
+      "locations": [{"file": ".github/workflows/ci.yml", "pattern": "python: \\['[^']+', '(?P<value>[^']+)'\\]"}],
+      "source": {"type": "github_tags", "repo": "python/cpython"},
+      "policy": "minimum"
+    },
+    {
+      "id": "gateway-clean-release-floor",
+      "locations": [
+        {"file": "docs/methodology/00-master-methodology.md", "pattern": "clean release \\(v(?P<value>\\d+\\.\\d+\\.\\d+)\\+\\)"},
+        {"file": "plugins/multi-ai-research/skills/research-orchestrator/references/00-master-methodology.md", "pattern": "clean release \\(v(?P<value>\\d+\\.\\d+\\.\\d+)\\+\\)"}
+      ],
+      "source": {"type": "pypi", "package": "litellm"},
+      "policy": "minimum",
+      "precondition": "Pin LiteLLM to the official Docker image / a clean release (v1.83.0+)"
+    },
+    {
+      "id": "linux-runner",
+      "locations": [
+        {"file": ".github/workflows/ci.yml", "pattern": "os: \\[(?P<value>ubuntu-[^,]+),"},
+        {"file": ".github/workflows/ci.yml", "pattern": "runs-on: (?P<value>ubuntu-[^\\s]+)"},
+        {"file": ".github/workflows/claude-code-review.yml", "pattern": "runs-on: (?P<value>ubuntu-[^\\s]+)"},
+        {"file": ".github/workflows/claude.yml", "pattern": "runs-on: (?P<value>ubuntu-[^\\s]+)"},
+        {"file": ".github/workflows/commit-hygiene.yml", "pattern": "runs-on: (?P<value>ubuntu-[^\\s]+)"}
+      ],
+      "source": {"type": "github_releases", "repo": "actions/runner-images"},
+      "policy": "manual",
+      "review_reason": "Floating Linux runner labels require review of hosted-image changes; numeric release comparison does not validate the selected environment"
+    },
+    {
+      "id": "windows-runner",
+      "locations": [{"file": ".github/workflows/ci.yml", "pattern": "os: \\[[^,]+, (?P<value>windows-[^\\]]+)\\]"}],
+      "source": {"type": "github_releases", "repo": "actions/runner-images"},
+      "policy": "manual",
+      "review_reason": "Floating Windows runner labels require review of hosted-image changes; numeric release comparison does not validate the selected environment"
+    },
+    {
+      "id": "plugin-validation-cli-install",
+      "locations": [{"file": ".github/workflows/ci.yml", "pattern": "npm install -g (?P<value>[^\\s]+)"}],
+      "source": {"type": "github_releases", "repo": "anthropics/claude-code"},
+      "policy": "manual",
+      "review_reason": "The validation CLI is installed without a version; review its registry selection and validation behavior manually because the freshness script has no npm source"
+    },
+    {
+      "id": "documented-spec-tool-install",
+      "locations": [
+        {"file": "docs/methodology/02-overlay-spec-driven-dev.md", "pattern": "npm install -g (?P<value>[^\\s]+)"},
+        {"file": "plugins/multi-ai-research/skills/research-orchestrator/references/02-overlay-spec-driven-dev.md", "pattern": "npm install -g (?P<value>[^\\s]+)"}
+      ],
+      "source": {"type": "github_releases", "repo": "gotalab/cc-sdd"},
+      "policy": "manual",
+      "review_reason": "The optional documented tool install is unversioned; compare both documentation copies and verify current installation guidance manually"
+    },
+    {
+      "id": "review-plugin-marketplace",
+      "locations": [{"file": ".github/workflows/claude-code-review.yml", "pattern": "plugin_marketplaces: '(?P<value>[^']+)'"}],
+      "mirrors": [{"id": "plugin-selection", "locations": [{"file": ".github/workflows/claude-code-review.yml", "pattern": "plugins: '(?P<value>[^']+)'"}]}],
+      "source": {"type": "github_releases", "repo": "anthropics/claude-code"},
+      "policy": "manual",
+      "review_reason": "The review plugin marketplace and code-review plugin float without a revision; review upstream plugin changes together with the comment guard",
+      "precondition": "Re-measure before bumping this pin, and before loosening the guard step above: the plugin's `gh pr comment` grant is honoured on every CLI version measured, so the boundary rests on that guard."
+    }
+  ]
+}
