@@ -61,12 +61,26 @@ An update ends when merged or deliberately declined. This adoption PR is not to
 be merged by the worker.
 
 This repository's human-only author/committer allowlist rejects dependency-bot
-identities. Bot-authored PRs therefore cannot pass commit hygiene unchanged; the
-operator must decide a compliant delivery path before they can land. Do not
-bypass hooks, spoof an author or expand the allowlist as part of a routine bump.
+identities. Bot-authored PRs are proposals and cannot land unchanged. Deliver each
+accepted proposal through a separate PR:
+
+1. Review the bot's diff, upstream release notes and all preconditions. Decline
+   unsuitable proposals with a reason; keep operator-owned changes with the operator.
+2. Start a new branch from current `master` and independently reproduce the
+   accepted update. Make a new `chore(deps)` commit with the contributor's existing
+   configured, allowlisted identity as both author and committer, as required by
+   `AGENTS.md`. Do not import the bot commit or rewrite its identity, set an author
+   override, add a tool trailer, bypass hooks or change the allowlist.
+3. Open a replacement PR against `master`, link the original proposal and run all
+   required checks and a substantive review against the replacement's current
+   head. Merge only under the ownership and waiting rules above.
+4. Close the original bot PR with a link to the accepted replacement and its
+   disposition. Its failing identity check is not a merge candidate and is never
+   waived. If the replacement is declined, record that reason on both proposals.
+
 The review workflow currently runs without publishing its verdict; a successful
 job alone is not a substantive current-head review. No real scheduled bot PR has
-yet proved end-to-end delivery. Branch-protection details could not be read with
+yet proved this delivery path end to end. Branch-protection details could not be read with
 the current credentials (HTTP 403); no settings were changed.
 
 ```mermaid
@@ -74,7 +88,8 @@ flowchart LR
     Monday[Monday 06:00 UTC] --> Bot[Grouped patch/minor PRs and individual majors]
     Monday --> Report[Hand-kept pins and dependency PRs older than seven days]
     Report --> Issue[One rolling freshness issue]
-    Bot --> Review[Check current head, preconditions, identity and CI]
+    Bot --> Delivery[Independently reproduce accepted update in a new approved-identity PR]
+    Delivery --> Review[Check replacement head, preconditions, identity and CI]
     Issue --> Review
     Review --> Decision[Eligible merge or operator decision; deliberate declines recorded]
 ```
