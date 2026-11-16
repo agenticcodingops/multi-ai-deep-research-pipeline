@@ -4,7 +4,7 @@ This repository follows the shared dependency-update template and [issue #3](htt
 Both schedules request Monday **06:00 UTC** on the default branch, `master`;
 scheduled runs can be delayed. The freshness caller also supports manual dispatch
 after merge. Its workflow and script checkout use the same reviewed public
-auto-code-scanning v3.1.0 commit.
+auto-code-scanning v3.1.2 commit.
 
 ## Inventory and coverage
 
@@ -18,7 +18,7 @@ JSON files describe this product; they are not package-manager dependency manife
 |---|---|---|
 | Active Actions | Checkout v5.1.0 in CI and review, v7.0.1 in the assistant workflow, floating v4 in commit hygiene; setup-python v6.3.0 in CI | Dependabot `github-actions` at `/`; existing distinct roles are preserved. |
 | Review action | `anthropics/claude-code-action` v1.0.266, SHA `d535f5172dec02b204866b393d6b20b9b2aaf98d`, in both review/assistant workflows | Unconditionally ignored by Dependabot. Freshness resolves both SHAs and version comments against stable tags and compares mirrors. |
-| Freshness implementation | New caller `uses`, `scanning-repo-ref`, version comment and manifest schema URL at `25f0b8722593e588ef573858bc46e1df9d7a1804` (v3.1.0) | Dependabot sees `uses`; freshness compares all four references. Update the shared template and all references together; correct a PR changing only `uses`. |
+| Freshness implementation | New caller `uses`, `scanning-repo-ref`, version comment and manifest schema URL at `179f7e83fb8845aac3fc0f7c01ac0d129e4dfa00` (v3.1.2) | Dependabot sees `uses`; freshness compares all four references. Update the shared template and all references together; correct a PR changing only `uses`. |
 | Python test lanes | CI matrix 3.12 and 3.13 | Two separate freshness `minimum` entries. These partial runtime selections are compatibility decisions owned by the operator, not outdated exact installs or mirrors of each other. |
 | Gateway guidance | LiteLLM clean-release floor v1.83.0+ in `docs/methodology/00-master-methodology.md` and its bundled orchestrator reference | Freshness `minimum` against PyPI plus mirror comparison; this is advice, not an installed gateway. |
 | Hosted runners | `ubuntu-latest` in all four existing workflows and the CI matrix; `windows-latest` in that matrix | Two freshness manual reminders, with equality checks for Linux occurrences. The reusable caller's internal runner/runtime pins belong to its reviewed implementation. |
@@ -120,7 +120,7 @@ manifest discovery or YAML/schema validity. Lint the new workflow with
 the existing CI workflow, including both script suites and plugin validation.
 
 For a network preview, set `PLATFORM` to a separate checkout verified at the
-v3.1.0 public SHA above. Use Python 3.11+ and keep the token in the environment:
+v3.1.2 public SHA above. Use Python 3.11+ and keep the token in the environment:
 
 ```sh
 GITHUB_TOKEN="$(gh auth token)" python -I -c \
@@ -135,12 +135,12 @@ Inspect every section. The operator performs the first write dispatch after merg
 the schedule activates only on `master`. This adoption does not prove a scheduled
 update PR, issue write or stale-PR alert from a real test case.
 
-Keep the rolling issue open: v3.1.0 preserves its state and will not reopen it.
+Keep the rolling issue open: v3.1.2 preserves its state and will not reopen it.
 Put durable discussion in comments because successful runs replace the body.
 When adding a package-manifest directory, add its own Dependabot entry. When
 adding hand-kept pins, include every active mirror and verbatim precondition.
 Use `minimum` for compatibility selections and `manual` with `review_reason` for
 unsupported registries or nonnumeric identifiers. New digests require publisher
 verification; extraction alone does not authenticate content. The public
-[freshness guide](https://github.com/agenticcodingops/auto-code-scanning/blob/25f0b8722593e588ef573858bc46e1df9d7a1804/docs/PIN-FRESHNESS.md)
+[freshness guide](https://github.com/agenticcodingops/auto-code-scanning/blob/179f7e83fb8845aac3fc0f7c01ac0d129e4dfa00/docs/PIN-FRESHNESS.md)
 documents the schema and report semantics.
