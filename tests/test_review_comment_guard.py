@@ -58,19 +58,24 @@ def indent_of(line):
     return len(line) - len(line.lstrip())
 
 
-def review_block(key):
-    """The text of a multi-line input (`key: |`) in the `with:` mapping of the review step, de-indented.
-
-    This is what the action actually receives. The key must be a direct child of that step's `with:`: the same key
-    under `env:`, in another step, or in a comment is not an input of the action and does not count."""
-    step = step_text("Run Claude Code Review").split("\n")
+def step_inputs(name, text=TEXT):
+    """The lines of a step's `with:` mapping, and the indent of its keys: the inputs the action receives."""
+    step = step_text(name, text).split("\n")
     with_line = next(i for i, line in enumerate(step) if re.match(r"\s+with:\s*$", line))
     mapping = []
     for line in step[with_line + 1:]:
         if line.strip() and indent_of(line) <= indent_of(step[with_line]):
             break
         mapping.append(line)
-    key_indent = min(indent_of(line) for line in mapping if line.strip() and not line.strip().startswith("#"))
+    return mapping, min(indent_of(line) for line in mapping if line.strip() and not line.strip().startswith("#"))
+
+
+def review_block(key):
+    """The text of a multi-line input (`key: |`) in the `with:` mapping of the review step, de-indented.
+
+    This is what the action actually receives. The key must be a direct child of that step's `with:`: the same key
+    under `env:`, in another step, or in a comment is not an input of the action and does not count."""
+    mapping, key_indent = step_inputs("Run Claude Code Review")
     start = next(i for i, line in enumerate(mapping)
                  if indent_of(line) == key_indent and re.match(r"\s+" + re.escape(key) + r":\s*[|>][-+]?\s*$", line))
     body = []
@@ -93,11 +98,11 @@ def review_arguments():
     return [line.strip() for line in review_block("claude_args").split("\n") if line.strip() and not line.strip().startswith("#")]
 
 
-def step_text(name):
+def step_text(name, text=TEXT):
     """The text of one workflow step, from its `- name:` line to the next step."""
-    start = TEXT.index("- name: " + name)
-    end = TEXT.find("\n      - name:", start + 1)
-    return TEXT[start:end if end != -1 else len(TEXT)]
+    start = text.index("- name: " + name)
+    end = text.find("\n      - name:", start + 1)
+    return text[start:end if end != -1 else len(text)]
 
 
 def step_run_block(name):
@@ -221,8 +226,10 @@ class WorkflowWiringTests(unittest.TestCase):
 
     def test_the_assistant_states_its_permission_mode(self):
         assistant = (WORKFLOW.parent / "claude.yml").read_text(encoding="utf-8")
-        arguments = re.findall(r"^ +claude_args:(.*)$", assistant, re.M)
-        self.assertEqual(arguments, [" --permission-mode acceptEdits"])
+        mapping, key_indent = step_inputs("Run Claude Code", assistant)
+        arguments = [line.strip() for line in mapping
+                     if indent_of(line) == key_indent and line.strip().startswith("claude_args:")]
+        self.assertEqual(arguments, ["claude_args: --permission-mode acceptEdits"])
 
     def test_nothing_in_the_settings_can_switch_hooks_off(self):
         # The settings the workflow itself writes are the user settings, so --setting-sources user does not protect
