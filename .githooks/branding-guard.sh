@@ -69,7 +69,7 @@ coauthor_check() {
     while IFS= read -r _line; do
         _addr=$(printf '%s\n' "$_line" | sed -n 's/.*<\([^<>]*\)>[[:space:]]*$/\1/p')
         if [ -z "$_addr" ] || [ -z "$_approved" ] \
-           || ! printf '%s\n' "$_approved" | grep -q -i -x -F "$_addr"; then
+           || ! printf '%s\n' "$_approved" | grep -q -i -x -F -e "$_addr"; then
             printf 'BLOCKED: co-author not approved in %s:\n    %s\n' "$_label" \
                    "$(printf '%s' "$_line" | sed 's/^[[:space:]]*//')" >&2
             _cfail=1
@@ -90,7 +90,7 @@ identity_check() {
         printf 'BLOCKED: %s %s of %s is a tool identity.\n' "$_role" "$_email" "${_ref:-commit}" >&2
         return 1
     fi
-    if ! grep -v '^[[:space:]]*#' "$_allow" | grep -q -i -x -F "$_email"; then
+    if ! grep -v '^[[:space:]]*#' "$_allow" | grep -q -i -x -F -e "$_email"; then
         printf 'BLOCKED: %s %s of %s is not in .githooks/allowed-authors.txt\n' \
                "$_role" "$_email" "${_ref:-commit}" >&2
         return 1

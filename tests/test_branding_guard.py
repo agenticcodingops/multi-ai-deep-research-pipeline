@@ -57,6 +57,9 @@ class GuardRepo:
         hooks.mkdir()
         for name in ("branding-guard.sh", "commit-msg", "pre-push"):
             shutil.copy(HOOKS / name, hooks / name)
+            # Git ignores a hook without the executable bit, and the tracked
+            # hooks do not carry it (install.sh sets it in each clone).
+            (hooks / name).chmod(0o755)
         if allowlist:
             (hooks / "allowed-authors.txt").write_text(
                 f"# approved\n{ALLOWED.upper()}\n", encoding="utf-8")
@@ -130,6 +133,9 @@ class CoauthorCheckTests(unittest.TestCase):
     def test_address_must_match_exactly(self):
         self.assertBlocks(f"fix: x\n\nCo-authored-by: Dev <x{ALLOWED}>\n")
         self.assertBlocks(f"fix: x\n\nCo-authored-by: Dev <{ALLOWED}.evil>\n")
+        # A leading hyphen must not turn the address into a grep option.
+        self.assertBlocks(f"fix: x\n\nCo-authored-by: Dev <-e{ALLOWED}>\n")
+        self.assertBlocks(f"fix: x\n\nCo-authored-by: Dev <-i>\n")
 
 
 class AllowlistFileTests(unittest.TestCase):
