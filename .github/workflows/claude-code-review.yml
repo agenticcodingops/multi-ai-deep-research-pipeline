@@ -214,8 +214,12 @@ jobs:
           # Deny the file tools the guard script, the settings that install it, and .git. An Edit
           # rule covers the Write tool; a Write(path) rule is never matched. gh's --jq filter can
           # read environment variables, so the gh read commands may not use --jq or --template.
+          # From v1.0.276 the action starts sessions in auto mode, where a classifier decides the
+          # calls no rule covers. `--permission-mode default` keeps the mode the guard was measured
+          # in: such a call is denied. Keep it when the pin moves.
           claude_args: |
             --disallowedTools "Read(./.git/**),Edit(/${{ runner.temp }}/**),Edit(~/.claude/**),Edit(/${{ github.workspace }}/.git/**),Bash(gh * --jq*),Bash(gh * -q*),Bash(gh * --template*),Bash(gh * -t*)"
             --setting-sources user
+            --permission-mode default
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options

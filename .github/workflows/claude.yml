@@ -66,5 +66,8 @@ jobs:
           # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
+          # From v1.0.276 the action starts mention runs in auto mode, where a classifier decides
+          # the calls no rule covers. `acceptEdits` is the mode the action sets at this pin: edits
+          # in the checkout run, and such a call is denied. Keep it when the pin moves.
+          claude_args: --permission-mode acceptEdits
 

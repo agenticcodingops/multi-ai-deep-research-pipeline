@@ -27,7 +27,7 @@ JSON files describe this product; they are not package-manager dependency manife
 | Historical/local identifiers | Measured CLI versions in guard comments; malicious LiteLLM 1.82.7/1.82.8 warning; own plugin release/changelog versions; license/schema/contract identifiers; Python 3.9+ explanatory stdlib comment; fixture data | Neither: historical evidence, product releases or format/implementation context, not independent current upgrade targets. |
 | Service guidance | Model names, subscription prices and unversioned app/connector advice in setup and methodology docs | Neither provides current service-catalog or pricing verification. Verify with the relevant publisher when using that guidance. |
 
-The manifest has ten entries. Manual policy extracts selections and detects mirror
+The manifest has twelve entries. Manual policy extracts selections and detects mirror
 drift but does not query upstream; its source is context only. No new files here
 are part of the distributable plugin; existing workflows and application files
 are unchanged. The inventory is a dated snapshot, not another executable version mirror.
@@ -39,6 +39,14 @@ The review workflow states (copied verbatim, with comment wrapping removed):
 > Re-measure before bumping this pin, and before loosening the guard step above: the plugin's `gh pr comment` grant is honoured on every CLI version measured, so the boundary rests on that guard.
 
 The unconditional review-action ignore preserves that boundary for both uses.
+
+The `claude-review-action` and `claude-interactive-action` entries report each
+workflow's pin separately. The combined `review-action` entry stays because it
+alone compares the two workflows with each other, so an outdated pin is listed
+three times. Both per-workflow entries carry this precondition:
+
+> Bundled CLI and review guard require manual re-measure before bumping; keep the explicit --permission-mode (default for the review, acceptEdits for the assistant), since v1.0.276 starts sessions in auto mode.
+
 The methodology's existing gateway advice is:
 
 > Pin LiteLLM to the official Docker image / a clean release (v1.83.0+)

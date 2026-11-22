@@ -13,6 +13,24 @@
       "precondition": "Re-measure before bumping this pin, and before loosening the guard step above: the plugin's `gh pr comment` grant is honoured on every CLI version measured, so the boundary rests on that guard."
     },
     {
+      "id": "claude-review-action",
+      "locations": [
+        {"file": ".github/workflows/claude-code-review.yml", "pattern": "uses: anthropics/claude-code-action@(?P<value>[a-f0-9]{40})"},
+        {"file": ".github/workflows/claude-code-review.yml", "pattern": "uses: anthropics/claude-code-action@[a-f0-9]{40} # v(?P<value>\\d+\\.\\d+\\.\\d+)"}
+      ],
+      "source": {"type": "github_tags", "repo": "anthropics/claude-code-action"},
+      "precondition": "Bundled CLI and review guard require manual re-measure before bumping; keep the explicit --permission-mode (default for the review, acceptEdits for the assistant), since v1.0.276 starts sessions in auto mode."
+    },
+    {
+      "id": "claude-interactive-action",
+      "locations": [
+        {"file": ".github/workflows/claude.yml", "pattern": "uses: anthropics/claude-code-action@(?P<value>[a-f0-9]{40})"},
+        {"file": ".github/workflows/claude.yml", "pattern": "uses: anthropics/claude-code-action@[a-f0-9]{40} # v(?P<value>\\d+\\.\\d+\\.\\d+)"}
+      ],
+      "source": {"type": "github_tags", "repo": "anthropics/claude-code-action"},
+      "precondition": "Bundled CLI and review guard require manual re-measure before bumping; keep the explicit --permission-mode (default for the review, acceptEdits for the assistant), since v1.0.276 starts sessions in auto mode."
+    },
+    {
       "id": "freshness-platform",
       "locations": [
         {"file": ".github/workflows/pin-freshness.yml", "pattern": "uses: agenticcodingops/auto-code-scanning/\\.github/workflows/pin-freshness\\.yml@(?P<value>[0-9a-f]{40})"},
