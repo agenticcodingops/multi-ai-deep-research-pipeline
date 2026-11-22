@@ -51,6 +51,35 @@ branding_scan() {
     return 0
 }
 
+# Every co-author must be an approved identity. GitHub lists each co-author of a
+# default-branch commit as a contributor, so an unlisted co-author is rejected
+# whatever its name. Approved: .githooks/allowed-authors.txt, plus
+# .githooks/allowed-coauthors.txt when that file exists. Fails closed.
+# Message on stdin; $1 = human-readable label. Returns 1 if any co-author fails.
+coauthor_check() {
+    _label="$1"
+    _top="$(git rev-parse --show-toplevel 2>/dev/null)"
+    _lines=$(tr -d '\r' | sed '/^[[:space:]]*#/d' \
+             | grep -i -E '^[[:space:]]*co-?authored-?by[[:space:]]*:' 2>/dev/null)
+    [ -n "$_lines" ] || return 0
+    _approved=$(cat "$_top/.githooks/allowed-authors.txt" \
+                    "$_top/.githooks/allowed-coauthors.txt" 2>/dev/null \
+                | tr -d '\r' | grep -v '^[[:space:]]*#' | sed '/^[[:space:]]*$/d')
+    _cfail=0
+    while IFS= read -r _line; do
+        _addr=$(printf '%s\n' "$_line" | sed -n 's/.*<\([^<>]*\)>[[:space:]]*$/\1/p')
+        if [ -z "$_addr" ] || [ -z "$_approved" ] \
+           || ! printf '%s\n' "$_approved" | grep -q -i -x -F "$_addr"; then
+            printf 'BLOCKED: co-author not approved in %s:\n    %s\n' "$_label" \
+                   "$(printf '%s' "$_line" | sed 's/^[[:space:]]*//')" >&2
+            _cfail=1
+        fi
+    done <<EOF
+$_lines
+EOF
+    return "$_cfail"
+}
+
 # Verify an author/committer email is an approved human identity.
 # $1 = email, $2 = role label, $3 = commit ref (optional)
 identity_check() {

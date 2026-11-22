@@ -12,6 +12,12 @@ EOF
     exit 1
 fi
 
+# Every co-author must be an approved identity too.
+if ! coauthor_check "commit message" < "$1"; then
+    printf '\nRemove the co-author line, or ask the maintainer to approve that identity.\n' >&2
+    exit 1
+fi
+
 # The commit must be authored by the configured human identity.
 identity_check "$(git var GIT_AUTHOR_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')" "author" || exit 1
 identity_check "$(git var GIT_COMMITTER_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')" "committer" || exit 1

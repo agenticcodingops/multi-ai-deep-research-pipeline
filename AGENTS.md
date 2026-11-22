@@ -24,6 +24,10 @@ git identity configured in `git config user.name` / `user.email`, and that
 address must appear in `.githooks/allowed-authors.txt`. Never set, spoof, or
 add an additional author, co-author, or committer. Never pass `--author`.
 
+**Co-authors:** GitHub lists every co-author of a default-branch commit as a
+contributor. The hooks and CI therefore reject any `Co-authored-by` line whose
+address is not in `.githooks/allowed-authors.txt`, whatever name it carries.
+
 Write commit messages in the imperative mood, describing only the change.
 
 ### Exception: code-review tools
@@ -65,7 +69,13 @@ Enforced mechanically at four layers. Do not attempt to bypass any of them:
 | Attribution disabled at source | `.claude/settings.json` | n/a |
 | Local commit check | `.githooks/commit-msg` | `--no-verify` |
 | Local push check | `.githooks/pre-push` | `--no-verify` |
-| **Server-side CI** | `.github/workflows/commit-hygiene.yml` | **no** |
+| **Server-side CI** | `.github/workflows/commit-hygiene.yml` | Not by `--no-verify`, but see below |
+
+The CI check is not a merge gate. `master` has no branch protection, so a direct
+push lands before CI runs, and CI then only reports the failure. CI also runs
+the guard from the commit under test, so a change to `.githooks/` is reviewed
+like any other code change. `tests/test_branding_guard.py` tests the co-author
+check, and CI runs it first.
 
 Enable the local hooks once per clone:
 

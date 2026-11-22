@@ -22,6 +22,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Self-test the guard
+        run: python3 -I tests/test_branding_guard.py -v
+
       - name: Determine commit range
         id: range
         run: |
@@ -47,6 +50,7 @@ jobs:
           for c in ${{ steps.range.outputs.list }}; do
             short=$(git rev-parse --short "$c")
             if ! git log -1 --format='%B' "$c" | branding_scan "commit $short"; then fail=1; fi
+            git log -1 --format='%B' "$c" | coauthor_check "commit $short" || fail=1
             identity_check "$(git log -1 --format='%ae' "$c")" "author"    "$short" || fail=1
             identity_check "$(git log -1 --format='%ce' "$c")" "committer" "$short" || fail=1
           done
