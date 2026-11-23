@@ -17,7 +17,7 @@
 # author, committer or co-author identity "Name <email>", or in a byline.
 # Ambiguous given names are matched only in their bot forms (devin-ai...,
 # google-labs-jules, kiro...[bot]) so a human called Devin, Jules or Kiro passes.
-AI_ERE='(^|[^a-z0-9])(claude|anthropic|openai|chatgpt|codex|copilot|gemini|cursor|cursoragent|aider|grok|x\.ai|xai|antigravity|devin-ai[a-z0-9-]*|google-labs-jules|kiro[a-z0-9-]*\[bot\]|kiro\.dev|opus|sonnet|haiku|fable|gpt-?[0-9][a-z0-9.]*)([^a-z0-9]|$)'
+AI_ERE='(^|[^a-z0-9])(claude|anthropic|openai|chatgpt|codex|copilot|gemini|cursor|cursoragent|aider|grok|x\.ai|xai|antigravity|devin-ai[a-z0-9-]*|google-labs-jules|kiro[a-z0-9-]*\[bot\]|kiro\.dev|opus|sonnet|haiku|fable|gpt[- ]?[0-9][a-z0-9.]*)([^a-z0-9]|$)'
 
 # A co-author trailer key. Commits: at the start of a line.
 COAUTHOR_ERE='^[[:space:]]*co-?authored-?by[[:space:]]*:'
