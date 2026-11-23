@@ -42,13 +42,12 @@ jobs:
           else
             base="$PUSH_BEFORE"; head="$PUSH_HEAD"
           fi
-          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
-             || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
-            # New branch: check only the commits it adds to the default branch.
-            list=$(git rev-list "$head" --not "origin/$DEFAULT_BRANCH" | tr '\n' ' ')
-          else
-            list=$(git rev-list "$base..$head" | tr '\n' ' ')
-          fi
+          # A new branch, a force push whose old tip is not in this clone, and
+          # the default branch itself are handled in commit_range (see the guard).
+          . ./.githooks/branding-guard.sh
+          list=$(commit_range "$base" "$head" "origin/$DEFAULT_BRANCH") || {
+            echo "::error::Could not list the commits to check."; exit 1; }
+          list=$(printf '%s' "$list" | tr '\n' ' ')
           echo "list=$list" >> "$GITHUB_OUTPUT"
 
       - name: Check commit authors, committers and co-authors
