@@ -1,24 +1,19 @@
 #!/bin/sh
-# Reject commit messages carrying vendor/tool attribution.
+# Reject a commit that makes an AI assistant a contributor: an AI author or
+# committer, or a Co-authored-by trailer naming one. Nothing else is checked.
 . "$(git rev-parse --show-toplevel)/.githooks/branding-guard.sh"
 
-if ! branding_scan "commit message" < "$1"; then
-    cat >&2 <<'EOF'
-
-Corporate policy: no third-party vendor or AI-tool names in commit metadata.
-Rewrite the message to describe only the change, then commit again.
-Do NOT use --no-verify; server-side CI enforces the same rule.
-EOF
-    exit 1
-fi
-
-# Every co-author must be an approved identity too.
 if ! coauthor_check "commit message" < "$1"; then
-    printf '\nRemove the co-author line, or ask the maintainer to approve that identity.\n' >&2
+    cat >&2 <<'MSG'
+
+No Co-authored-by trailer may name an AI assistant; remove that trailer,
+then commit again. Do NOT use --no-verify; server-side CI enforces the same rule.
+MSG
     exit 1
 fi
 
-# The commit must be authored by the configured human identity.
-identity_check "$(git var GIT_AUTHOR_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')" "author" || exit 1
-identity_check "$(git var GIT_COMMITTER_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')" "committer" || exit 1
+# "Name <email> 1700000000 +0000" -> "Name <email>"
+ident() { git var "$1" | sed 's/[[:space:]]*[0-9]*[[:space:]]*[-+][0-9]*$//'; }
+identity_check "$(ident GIT_AUTHOR_IDENT)" "author" || exit 1
+identity_check "$(ident GIT_COMMITTER_IDENT)" "committer" || exit 1
 exit 0

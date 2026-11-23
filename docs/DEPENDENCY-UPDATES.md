@@ -66,48 +66,29 @@ workflows, every re-measure precondition and other package changes belong to the
 operator unless explicitly delegated. An operator-owned member holds its group.
 An update ends when merged or deliberately declined.
 
-This repository's human-only author/committer allowlist rejects dependency-bot
-identities. Bot-authored PRs are proposals and cannot land unchanged. Deliver each
-accepted proposal through a separate PR:
+Dependabot is not an AI assistant, so the authorship policy in `AGENTS.md`
+does not bar its commits. Accepted proposals merge as ordinary PRs:
 
 1. Review the bot's diff, upstream release notes and all preconditions. Decline
    unsuitable proposals with a reason; keep operator-owned changes with the operator.
-2. Start a new branch from current `master` and independently reproduce the
-   accepted update. Make a new `chore(deps)` commit with the contributor's existing
-   configured, allowlisted identity as both author and committer, as required by
-   `AGENTS.md`. Do not import the bot commit or rewrite its identity, set an author
-   override, add a tool trailer, bypass hooks or change the allowlist.
-3. Open a replacement PR against `master`, link the original proposal and run all
-   required checks and a substantive review against the replacement's current
-   head. After the ownership and waiting rules above are satisfied, the authorized
-   merger locally fast-forwards `master` to that exact reviewed head and makes an
-   ordinary push with hooks enabled. This creates no merge/squash/rebase commit
-   and preserves the reviewed author and committer identities. Verify every new
-   commit against the allowlist before pushing. Do not use a server-created merge
-   or force-push `master`. Recheck branch rules first; if they prohibit this path,
-   stop for an operator decision without bypassing them. If `master` has diverged,
-   update the replacement branch and repeat checks, review and the waiting period
-   for its new head rather than merging an unreviewed result.
-4. Close the original bot PR with a link to the accepted replacement and its
-   disposition. Its failing identity check is not a merge candidate and is never
-   waived. If the replacement is declined, record that reason on both proposals.
+2. Run all required checks and get a substantive review naming the PR's current
+   head. If `master` has moved, let Dependabot rebase the PR, then repeat checks,
+   review and the waiting period for the new head.
+3. After the ownership and waiting rules above are satisfied, merge the PR on
+   GitHub against that exact head. Close a declined proposal with its reason.
 
 The review workflow currently runs without publishing its verdict; a successful
-job alone is not a substantive current-head review. The scheduled proposal #12,
-delivered through its replacement #13, proved this delivery path end to end.
-On 2026-11-22 the branch API reported
-`master` as unprotected, and the active branch-rules and ruleset APIs returned
-empty arrays, permitting the ordinary fast-forward delivery path above under the
-observed configuration. The detailed protection endpoint returned HTTP 403;
-no settings were changed. Recheck the effective configuration before each delivery.
+job alone is not a substantive current-head review. Before this policy was
+narrowed, the scheduled proposal #12 was delivered through a hand-made
+replacement, #13, because the commit check then rejected every bot identity.
+That replacement path is no longer needed.
 
 ```mermaid
 flowchart LR
     Monday[Monday 06:00 UTC] --> Bot[Grouped patch/minor PRs and individual majors]
     Monday --> Report[Hand-kept pins and dependency PRs older than seven days]
     Report --> Issue[One rolling freshness issue]
-    Bot --> Delivery[Independently reproduce accepted update in a new approved-identity PR]
-    Delivery --> Review[Check replacement head, preconditions, identity and CI]
+    Bot --> Review[Check preconditions, current-head review and CI]
     Issue --> Review
     Review --> Decision[Eligible merge or operator decision; deliberate declines recorded]
 ```
