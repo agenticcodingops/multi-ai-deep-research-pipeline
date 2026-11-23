@@ -148,6 +148,18 @@ class AllowlistFileTests(unittest.TestCase):
         finally:
             repo.close()
 
+    def test_lists_without_final_newline_stay_separate(self):
+        bot = "136622811+coderabbitai[bot]@users.noreply.github.com"
+        repo = GuardRepo(coauthors=[bot])
+        try:
+            hooks = repo.dir / ".githooks"
+            (hooks / "allowed-authors.txt").write_text(ALLOWED, encoding="utf-8")
+            (hooks / "allowed-coauthors.txt").write_text(bot, encoding="utf-8")
+            self.assertEqual(repo.check(f"x\n\nCo-authored-by: D <{ALLOWED}>\n")[0], 0)
+            self.assertEqual(repo.check(f"x\n\nCo-authored-by: R <{bot}>\n")[0], 0)
+        finally:
+            repo.close()
+
     def test_coauthor_file_extends_the_allowlist(self):
         bot = "136622811+coderabbitai[bot]@users.noreply.github.com"
         repo = GuardRepo(coauthors=[bot])
