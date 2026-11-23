@@ -23,9 +23,15 @@ AI_ERE='(^|[^a-z0-9])(claude|anthropic|openai|chatgpt|codex|copilot|gemini|curso
 COAUTHOR_ERE='^[[:space:]]*co-?authored-?by[[:space:]]*:'
 
 # PR text: a co-author line or a "Generated with/by" byline, allowing a
-# leading emoji, quote or list marker.
-PR_COAUTHOR_ERE='^[^[:alnum:]]*co-?authored-?by[[:space:]]*:'
-PR_BYLINE_ERE='^[^[:alnum:]]*generated[[:space:]]+(with|by)[[:space:]]'
+# leading emoji, quote or list marker, and Markdown emphasis or code marks
+# around the words ("**Generated with** Claude", "**Co-authored-by**: Codex").
+PR_COAUTHOR_ERE='^[^[:alnum:]]*co-?authored-?by[^[:alnum:]]*:'
+PR_BYLINE_ERE='^[^[:alnum:]]*generated[^[:alnum:]]+(with|by)([^[:alnum:]]|$)'
+
+# A byline credits a product, not a person, so it also matches the agent
+# names that AI_ERE takes only in their bot forms (so that humans called
+# Devin, Jules or Kiro pass as contributors).
+BYLINE_AI_ERE='(^|[^a-z0-9])(jules|devin|kiro)([^a-z0-9]|$)'
 
 # Returns 0 if $1 names an AI assistant.
 is_ai_identity() {
@@ -71,12 +77,42 @@ identity_check() {
 # assistant. Other text, tool names included, is not checked.
 attribution_scan() {
     _label="$1"
-    _hits=$(tr -d '\r' | grep -n -i -E "$PR_COAUTHOR_ERE|$PR_BYLINE_ERE" 2>/dev/null \
-            | grep -i -E "$AI_ERE" 2>/dev/null)
+    _text=$(tr -d '\r')
+    _hits=$( { printf '%s\n' "$_text" | grep -n -i -E "$PR_COAUTHOR_ERE" 2>/dev/null \
+                   | grep -i -E "$AI_ERE" 2>/dev/null
+               printf '%s\n' "$_text" | grep -n -i -E "$PR_BYLINE_ERE" 2>/dev/null \
+                   | grep -i -E "$AI_ERE|$BYLINE_AI_ERE" 2>/dev/null
+             } | sort -t: -k1,1n -u)
     if [ -n "$_hits" ]; then
         printf 'BLOCKED: %s carries an AI attribution line:\n' "$_label" >&2
         printf '%s\n' "$_hits" | sed 's/^/    /' >&2
         return 1
     fi
     return 0
+}
+
+# Prints the commits a push or PR adds, one per line, for the checks above.
+# $1 = old tip (empty or all zeros for a new ref), $2 = new tip,
+# $3 = default-branch ref (for example origin/main).
+# When the old tip is a commit in this clone, the range is old..new. When it
+# is empty, zero or not in this clone (a force push can leave the previous
+# tip unreachable), the range is every commit the new tip adds to the default
+# branch; and when that is empty because the new tip is already on the default
+# branch (the default branch itself was created or force-pushed), the new
+# tip's whole ancestry. Returns 1, printing nothing, if git cannot list them.
+commit_range() {
+    _base="$1"; _head="$2"; _default="$3"
+    if [ -n "$_base" ] && [ "$_base" != "0000000000000000000000000000000000000000" ] \
+       && git cat-file -e "$_base^{commit}" 2>/dev/null; then
+        git rev-list "$_base..$_head" || return 1
+        return 0
+    fi
+    if [ -n "$_default" ] && git rev-parse -q --verify "$_default^{commit}" >/dev/null 2>&1; then
+        _added=$(git rev-list "$_head" --not "$_default") || return 1
+        if [ -n "$_added" ]; then
+            printf '%s\n' "$_added"
+            return 0
+        fi
+    fi
+    git rev-list "$_head" || return 1
 }
