@@ -47,7 +47,8 @@ The hooks and CI check only the rules above: the author, committer and
 `Co-authored-by` identities of each commit against a deny list of AI
 assistants in `.githooks/branding-guard.sh`, and the PR body for AI
 attribution lines. The deny list does not know every assistant; the policy
-applies whether or not a check catches it.
+applies whether or not a check catches it. Issue bodies and comments are
+covered by the policy, not by a check: no hook or workflow scans them.
 
 The CI check is not a merge gate. `master` has no branch protection, so a direct
 push lands before CI runs, and CI then only reports the failure. CI also runs
