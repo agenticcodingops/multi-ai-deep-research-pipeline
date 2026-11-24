@@ -72,8 +72,9 @@ does not bar its commits. Accepted proposals merge as ordinary PRs:
 1. Review the bot's diff, upstream release notes and all preconditions. Decline
    unsuitable proposals with a reason; keep operator-owned changes with the operator.
 2. Run all required checks and get a substantive review naming the PR's current
-   head. If `master` has moved, let Dependabot rebase the PR, then repeat checks,
-   review and the waiting period for the new head.
+   head. If `master` has moved, comment `@dependabot rebase` on the PR (Dependabot
+   rebases on its own only when the PR conflicts), then repeat checks, review and
+   the waiting period for the new head.
 3. After the ownership and waiting rules above are satisfied, merge the PR on
    GitHub against that exact head. Close a declined proposal with its reason.
 
