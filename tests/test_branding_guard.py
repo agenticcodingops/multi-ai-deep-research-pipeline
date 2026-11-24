@@ -46,6 +46,8 @@ AI_IDENTITIES = {
     "vendor noreply mailbox": "Agent <noreply@openai.com>",
     "assistant with suffix": "Claude Code <x@example.com>",
     "upper-case name": "CLAUDE <x@example.com>",
+    "assistant mailbox at vendor": "Dev <claude@anthropic.com>",
+    "assistant bot in address": "Dev <claude-code-action[bot]@example.com>",
 }
 
 # Identities that are not AI assistants: each must pass.
@@ -56,6 +58,8 @@ OTHER_IDENTITIES = {
     "human named Devin": "Devin Smith <devin@example.org>",
     "human named Jules": "Jules Verne <jules@example.org>",
     "human named Claude": "Claude Martin <claude.martin@example.org>",
+    "human Claude with a bare mailbox": "Claude Martin <claude@example.org>",
+    "human Claude at a vendor": "Claude Martin <claude.martin@anthropic.com>",
     "vendor employee": "Sam Person <sam@openai.com>",
     "vendor employee at another vendor": "Pat Lee <pat.lee@anthropic.com>",
     "review bot": "coderabbitai[bot] <136622811+coderabbitai[bot]@users.noreply.github.com>",

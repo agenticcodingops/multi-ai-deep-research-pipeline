@@ -26,10 +26,16 @@ AI_ERE="(^|[^a-z0-9])($AI_NAMES)([^a-z0-9]|\$)"
 # "Claude" alone or with assistant words ("Claude Code", "claude[bot]",
 # "claude-code-action[bot]", "Claude 4"), but not "Claude Martin".
 CLAUDE_ERE='^[^a-z0-9]*claude([^a-z0-9]+(code|ai|agent|bot|assistant|app|action|cli|github|[0-9][0-9.]*))*[^a-z0-9]*$'
+# In an address's local part, "claude" counts only with an assistant word
+# ("claude[bot]", "claude-code-action[bot]"), so a person called Claude with
+# the mailbox claude@example.org passes. A bare "claude" mailbox counts only
+# at an AI vendor's domain (VENDOR_LOCAL_ERE).
+CLAUDE_LOCAL_ERE='^[^a-z0-9]*claude([^a-z0-9]+(code|ai|agent|bot|assistant|app|action|cli|github|[0-9][0-9.]*))+[^a-z0-9]*$'
 
-# An AI vendor's domain counts only for a noreply or bot mailbox there.
+# An AI vendor's domain counts only for a noreply, bot or bare "claude"
+# mailbox there.
 VENDOR_DOMAIN_ERE='(^|\.)(anthropic\.com|openai\.com|x\.ai|cursor\.com|kiro\.dev|aider\.chat)$'
-VENDOR_LOCAL_ERE='^(no-?reply|notifications?|bot|agent|assistant)([^a-z0-9].*)?$'
+VENDOR_LOCAL_ERE='^(no-?reply|notifications?|bot|agent|assistant)([^a-z0-9].*)?$|^claude$'
 
 # A byline credits a product, not a person, so every agent name counts there.
 BYLINE_NAMES="$AI_NAMES|claude|jules|devin|kiro"
@@ -63,7 +69,8 @@ is_ai_identity() {
     # GitHub noreply addresses carry an "<id>+" prefix.
     _ai_local=$(printf '%s' "$_ai_local" | sed 's/^[0-9]*+//')
     printf '%s\n%s\n' "$_ai_name" "$_ai_local" | grep -q -E "$AI_ERE" 2>/dev/null && return 0
-    printf '%s\n%s\n' "$_ai_name" "$_ai_local" | grep -q -E "$CLAUDE_ERE" 2>/dev/null && return 0
+    printf '%s\n' "$_ai_name" | grep -q -E "$CLAUDE_ERE" 2>/dev/null && return 0
+    printf '%s\n' "$_ai_local" | grep -q -E "$CLAUDE_LOCAL_ERE" 2>/dev/null && return 0
     if [ -n "$_ai_domain" ] \
        && printf '%s\n' "$_ai_domain" | grep -q -E "$VENDOR_DOMAIN_ERE" 2>/dev/null \
        && printf '%s\n' "$_ai_local" | grep -q -E "$VENDOR_LOCAL_ERE" 2>/dev/null; then
